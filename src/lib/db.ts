@@ -24,11 +24,36 @@ function lsGetAll(): Personaje[] {
 }
 
 function lsSet(personajes: Personaje[]) {
-  localStorage.setItem(LS_KEY, JSON.stringify(personajes));
-  // Disparar evento para sincronizar otras pestañas
-  window.dispatchEvent(
-    new StorageEvent('storage', { key: LS_KEY, newValue: JSON.stringify(personajes) })
-  );
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify(personajes));
+    // Disparar evento para sincronizar otras pestañas
+    window.dispatchEvent(
+      new StorageEvent('storage', { key: LS_KEY, newValue: JSON.stringify(personajes) })
+    );
+  } catch (e) {
+    // Si falla (quota), intentar limpiar y notificar igualmente
+    console.warn('localStorage write failed:', e);
+    lsNotify();
+  }
+}
+
+/**
+ * Guarda en localStorage omitiendo los retratos base64 (pueden ser muy grandes).
+ * Las URLs de Supabase Storage son strings cortos y se pueden guardar sin problema.
+ * Los data: URLs (base64) se descartan para evitar QuotaExceededError.
+ */
+function lsSetSafe(personajes: Personaje[]) {
+  const limpios = personajes.map(p => ({
+    ...p,
+    retratos: Object.fromEntries(
+      Object.entries(p.retratos ?? {}).map(([k, v]) => [
+        k,
+        // Conservar URLs de Supabase Storage; descartar data:image base64
+        typeof v === 'string' && v.startsWith('data:') ? '' : v,
+      ])
+    ),
+  }));
+  lsSet(limpios);
 }
 
 function lsNotify() {
@@ -155,9 +180,9 @@ export async function dbCrearPersonaje(
       .single();
 
     if (!error && data) {
-      // Guardar también en localStorage como caché
+      // Guardar en localStorage como caché ligero (sin imágenes base64)
       const todos = lsGetAll();
-      lsSet([data as Personaje, ...todos]);
+      lsSetSafe([data as Personaje, ...todos]);
       return data as Personaje;
     }
     console.warn('Supabase INSERT error, guardando en localStorage:', error?.message);
@@ -179,7 +204,8 @@ export async function dbActualizarPersonaje(
 
   if (idx !== -1) {
     todos[idx] = { ...todos[idx], ...cambios, ultimo_update: new Date().toISOString() };
-    lsSet(todos);
+    // Usar lsSetSafe para no almacenar base64 de retratos y evitar QuotaExceededError
+    lsSetSafe(todos);
   }
 
   if (isSupabaseConfigured && supabase) {
@@ -224,7 +250,8 @@ export async function sincronizarDesdeSupabase(): Promise<void> {
     .order('created_at', { ascending: false });
 
   if (!error && data) {
-    lsSet(data as Personaje[]);
+    // Sincronizar sin imágenes base64 para no llenar localStorage
+    lsSetSafe(data as Personaje[]);
     lsNotify();
   }
 }
