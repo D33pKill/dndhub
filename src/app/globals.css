@@ -1,9 +1,9 @@
 @import "tailwindcss";
 
 /* ══════════════════════════════════════════
-   FUENTES
+   FUENTES — Medieval/Gothic
 ══════════════════════════════════════════ */
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cinzel+Decorative:wght@400;700&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&family=IM+Fell+English:ital@0;1&display=swap');
 
 /* ══════════════════════════════════════════
    TEMA GLOBAL
@@ -11,36 +11,64 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: 'Rajdhani', sans-serif;
+  --font-sans: 'Crimson Pro', Georgia, serif;
   --font-heading: 'Cinzel', serif;
-  --font-hud: 'Orbitron', monospace;
+  --font-hud: 'Cinzel', serif;
 }
 
 :root {
-  --background: #080a0e;
-  --foreground: #c8d0e0;
+  /* ─── Fondo / Vacío ─────────────────────── */
+  --background:    #060402;
+  --foreground:    #c4b090;
 
-  /* Colores neon */
-  --neon-red: #ff1744;
-  --neon-blue: #00e5ff;
-  --neon-green: #76ff03;
-  --neon-gold: #ffd700;
-  --neon-purple: #d500f9;
-  --neon-orange: #ff6d00;
+  /* ─── Piedra ────────────────────────────── */
+  --stone-abyss:   #060402;
+  --stone-deep:    #0c0a07;
+  --stone-dark:    #130f0b;
+  --stone-mid:     #1c1712;
+  --stone-base:    #252018;
+  --stone-light:   #302820;
+  --stone-pale:    #3d3028;
 
-  /* Superficies */
-  --surface-0: #080a0e;
-  --surface-1: #0d1117;
-  --surface-2: #131820;
-  --surface-3: #1a2233;
-  --surface-border: #2a3548;
-  --surface-border-bright: #3d5270;
+  /* ─── Hierro / Metal desgastado ─────────── */
+  --iron-dark:     #1e1a14;
+  --iron-mid:      #2e2820;
+  --iron-light:    #42382c;
+  --iron-edge:     #5a4e3e;
+  --iron-shine:    #7a6a58;
 
-  /* Metálicos */
-  --metal-dark: #1c2535;
-  --metal-mid: #2e3d55;
-  --metal-light: #4a607d;
-  --metal-bright: #8fa8c8;
+  /* ─── Oro envejecido / Ámbar ────────────── */
+  --gold-dim:      #5a4010;
+  --gold-mid:      #7a5818;
+  --gold-base:     #9a7020;
+  --gold-bright:   #b88c30;
+  --gold-shine:    #c8a048;
+
+  /* ─── Sangre / Carmesí apagado ──────────── */
+  --blood-dark:    #2a0808;
+  --blood-mid:     #4a1010;
+  --blood-base:    #6b1818;
+  --blood-bright:  #8b2020;
+
+  /* ─── Ceniza / Hueso ────────────────────── */
+  --ash-dark:      #3a3028;
+  --ash-mid:       #5a4e40;
+  --ash-light:     #7a6e60;
+  --ash-pale:      #9a8e80;
+  --bone:          #b8aa98;
+  --parchment:     #c8b898;
+
+  /* ─── Maná / Azul frío oscuro ───────────── */
+  --mana-dark:     #0a1020;
+  --mana-mid:      #162035;
+  --mana-base:     #243050;
+  --mana-bright:   #3a4870;
+
+  /* ─── Estamina / Verde musgo ─────────────  */
+  --stamina-dark:  #0a1408;
+  --stamina-mid:   #162010;
+  --stamina-base:  #243018;
+  --stamina-bright:#384828;
 }
 
 /* ══════════════════════════════════════════
@@ -54,106 +82,177 @@
 
 html, body {
   height: 100%;
-  background: var(--surface-0);
+  background: var(--stone-abyss);
   color: var(--foreground);
-  font-family: 'Rajdhani', sans-serif;
-  font-size: 15px;
-  line-height: 1.5;
+  font-family: 'Crimson Pro', Georgia, serif;
+  font-size: 16px;
+  line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
 }
 
 /* ══════════════════════════════════════════
-   SCROLLBAR PERSONALIZADA
+   SCROLLBAR — Hierro desgastado
 ══════════════════════════════════════════ */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: var(--surface-1); }
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--stone-dark); }
 ::-webkit-scrollbar-thumb {
-  background: var(--metal-mid);
-  border-radius: 3px;
+  background: var(--iron-edge);
+  border-radius: 1px;
 }
-::-webkit-scrollbar-thumb:hover { background: var(--metal-light); }
+::-webkit-scrollbar-thumb:hover { background: var(--gold-dim); }
 
-/* ══════════════════════════════════════════
-   SELECTORES DE TEXTO
-══════════════════════════════════════════ */
 ::selection {
-  background: rgba(0, 229, 255, 0.25);
-  color: #fff;
+  background: rgba(154, 112, 32, 0.3);
+  color: var(--parchment);
 }
 
 /* ══════════════════════════════════════════
    TIPOGRAFÍA
 ══════════════════════════════════════════ */
 .font-heading { font-family: 'Cinzel', serif; }
-.font-hud { font-family: 'Orbitron', monospace; }
+.font-hud     { font-family: 'Cinzel', serif; }
+.font-lore    { font-family: 'IM Fell English', Georgia, serif; font-style: italic; }
 
 /* ══════════════════════════════════════════
-   FONDOS & TEXTURAS
+   FONDO PRINCIPAL — Dungeon / Castle
 ══════════════════════════════════════════ */
 .bg-hud {
   background:
-    radial-gradient(ellipse at 20% 50%, rgba(0,229,255,0.04) 0%, transparent 60%),
-    radial-gradient(ellipse at 80% 20%, rgba(255,23,68,0.04) 0%, transparent 60%),
-    radial-gradient(ellipse at 60% 80%, rgba(118,255,3,0.03) 0%, transparent 60%),
-    linear-gradient(180deg, #080a0e 0%, #0a0e14 100%);
+    radial-gradient(ellipse at 50% 100%, rgba(90, 64, 16, 0.06) 0%, transparent 60%),
+    radial-gradient(ellipse at 20% 0%,   rgba(60, 20, 8,  0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 0%,   rgba(30, 20, 10, 0.12) 0%, transparent 50%),
+    linear-gradient(180deg, #0c0a07 0%, #060402 60%, #080604 100%);
   min-height: 100vh;
-}
-
-.bg-stone-texture {
-  background-image:
-    url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.015'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-}
-
-/* ══════════════════════════════════════════
-   MARCOS METÁLICOS
-══════════════════════════════════════════ */
-.metal-frame {
-  background: linear-gradient(135deg, var(--metal-dark) 0%, var(--metal-mid) 50%, var(--metal-dark) 100%);
-  border: 1px solid var(--surface-border-bright);
   position: relative;
 }
-.metal-frame::before {
+
+/* Fondo con textura de piedra via imagen */
+.bg-dungeon {
+  background-image: url('/dungeon_bg.png');
+  background-size: cover;
+  background-position: center top;
+  background-attachment: fixed;
+  min-height: 100vh;
+  position: relative;
+}
+.bg-dungeon::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    linear-gradient(180deg,
+      rgba(6,4,2,0.82) 0%,
+      rgba(6,4,2,0.65) 40%,
+      rgba(6,4,2,0.80) 100%);
+  pointer-events: none;
+  z-index: 0;
+}
+.bg-dungeon > * { position: relative; z-index: 1; }
+
+/* ══════════════════════════════════════════
+   MARCOS — Piedra tallada y hierro
+══════════════════════════════════════════ */
+
+/* Marco de panel principal */
+.stone-frame {
+  background: linear-gradient(160deg, var(--stone-dark) 0%, var(--stone-mid) 60%, var(--stone-dark) 100%);
+  border: 1px solid var(--iron-edge);
+  position: relative;
+  box-shadow:
+    inset 0 1px 0 rgba(200,160,72,0.08),
+    inset 0 -1px 0 rgba(0,0,0,0.5),
+    0 4px 24px rgba(0,0,0,0.7);
+}
+.stone-frame::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, transparent 50%);
+  background: linear-gradient(135deg, rgba(154,112,32,0.04) 0%, transparent 50%);
   pointer-events: none;
 }
-.metal-frame-inset {
-  background: var(--surface-1);
-  border: 1px solid var(--surface-border);
-  box-shadow: inset 0 2px 8px rgba(0,0,0,0.6);
+
+/* Marco con borde de oro desgastado */
+.gold-frame {
+  background: linear-gradient(160deg, var(--stone-dark) 0%, var(--iron-dark) 100%);
+  border: 1px solid var(--gold-dim);
+  box-shadow:
+    inset 0 0 30px rgba(0,0,0,0.5),
+    0 0 0 1px rgba(0,0,0,0.8);
+  position: relative;
+}
+.gold-frame::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border: 1px solid rgba(90,64,16,0.3);
+  pointer-events: none;
+}
+
+/* Panel incrustado (profundidad) */
+.stone-inset {
+  background: var(--stone-abyss);
+  border: 1px solid var(--iron-dark);
+  box-shadow: inset 0 2px 12px rgba(0,0,0,0.8), inset 0 0 4px rgba(0,0,0,0.6);
 }
 
 /* ══════════════════════════════════════════
-   BARRAS DE PROGRESO NEON
+   BARRAS DE PROGRESO — Grabadas en piedra
 ══════════════════════════════════════════ */
 .glow-bar-track {
-  background: var(--surface-1);
-  border: 1px solid var(--surface-border);
-  border-radius: 2px;
+  background: var(--stone-abyss);
+  border: 1px solid var(--iron-dark);
+  border-radius: 1px;
   overflow: hidden;
-  box-shadow: inset 0 1px 4px rgba(0,0,0,0.8);
+  box-shadow: inset 0 1px 6px rgba(0,0,0,0.9), inset 0 0 2px rgba(0,0,0,0.8);
   position: relative;
+}
+/* Líneas de grabado */
+.glow-bar-track::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent,
+    transparent 8px,
+    rgba(0,0,0,0.15) 8px,
+    rgba(0,0,0,0.15) 9px
+  );
+  z-index: 2;
+  pointer-events: none;
 }
 .glow-bar-fill {
   height: 100%;
-  border-radius: 2px;
-  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 0px;
+  transition: width 0.7s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
 }
+/* Brillo superior sutil */
 .glow-bar-fill::after {
   content: '';
   position: absolute;
   top: 0; left: 0; right: 0;
-  height: 40%;
-  background: linear-gradient(180deg, rgba(255,255,255,0.25) 0%, transparent 100%);
+  height: 35%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.1) 0%, transparent 100%);
 }
-.bar-hp { background: linear-gradient(90deg, #c62828, #ff1744, #ff4569); box-shadow: 0 0 8px #ff1744, 0 0 20px rgba(255,23,68,0.4); }
-.bar-mana { background: linear-gradient(90deg, #0d47a1, #00b0ff, #40c4ff); box-shadow: 0 0 8px #00b0ff, 0 0 20px rgba(0,176,255,0.4); }
-.bar-stamina { background: linear-gradient(90deg, #33691e, #76ff03, #b2ff59); box-shadow: 0 0 8px #76ff03, 0 0 20px rgba(118,255,3,0.4); }
+
+/* Barra de vida — Sangre seca */
+.bar-hp {
+  background: linear-gradient(90deg, #2a0808, #6b1818, #7a2020);
+  box-shadow: 0 0 4px rgba(107,24,24,0.4);
+}
+/* Barra de maná — Azul de tinta antigua */
+.bar-mana {
+  background: linear-gradient(90deg, #0a1020, #243050, #304060);
+  box-shadow: 0 0 4px rgba(36,48,80,0.4);
+}
+/* Barra de estamina — Verde musgo */
+.bar-stamina {
+  background: linear-gradient(90deg, #0a1408, #243018, #344020);
+  box-shadow: 0 0 4px rgba(36,48,24,0.4);
+}
 
 /* ══════════════════════════════════════════
    BADGES / CONDICIONES
@@ -162,14 +261,14 @@ html, body {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 3px 8px;
-  border-radius: 2px;
-  font-family: 'Orbitron', monospace;
+  padding: 2px 8px;
+  font-family: 'Cinzel', serif;
   font-size: 9px;
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   border: 1px solid currentColor;
   text-transform: uppercase;
+  background: rgba(6,4,2,0.7);
   backdrop-filter: blur(4px);
 }
 
@@ -179,20 +278,21 @@ html, body {
 .action-btn {
   position: relative;
   overflow: hidden;
-  background: linear-gradient(135deg, var(--metal-dark), var(--metal-mid));
-  border: 1px solid var(--surface-border-bright);
-  transition: all 0.2s ease;
+  background: linear-gradient(135deg, var(--stone-dark), var(--iron-dark));
+  border: 1px solid var(--iron-edge);
+  transition: all 0.25s ease;
   cursor: pointer;
 }
 .action-btn::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(255,255,255,0.06) 0%, transparent 60%);
+  background: linear-gradient(135deg, rgba(154,112,32,0.05) 0%, transparent 60%);
 }
 .action-btn:hover {
-  border-color: var(--neon-blue);
-  box-shadow: 0 0 16px rgba(0,229,255,0.2), inset 0 0 16px rgba(0,229,255,0.05);
+  border-color: var(--gold-dim);
+  background: linear-gradient(135deg, var(--stone-mid), var(--iron-mid));
+  box-shadow: 0 0 12px rgba(90,64,16,0.2), inset 0 0 8px rgba(90,64,16,0.05);
   transform: translateY(-1px);
 }
 .action-btn:active { transform: translateY(0); }
@@ -202,310 +302,316 @@ html, body {
 ══════════════════════════════════════════ */
 .portrait-frame {
   position: relative;
-  background: var(--surface-1);
+  background: var(--stone-abyss);
   overflow: hidden;
+  border: 1px solid var(--iron-edge);
 }
 .portrait-frame::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, transparent 60%, rgba(0,0,0,0.8) 100%);
+  background: linear-gradient(180deg, transparent 55%, rgba(0,0,0,0.9) 100%);
   pointer-events: none;
 }
+/* Viñeta de borde para integrar retrato con el fondo */
+.portrait-frame::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  box-shadow: inset 0 0 20px rgba(0,0,0,0.6);
+  z-index: 3;
+  pointer-events: none;
+}
+
 /* Estados del retrato */
-.portrait-herido::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse at center, rgba(255,23,68,0.3) 0%, transparent 70%);
-  z-index: 2;
-  pointer-events: none;
-  animation: pulsarRojo 2s ease-in-out infinite;
+.portrait-herido::after {
+  background:
+    radial-gradient(ellipse at center, rgba(107,24,24,0.25) 0%, transparent 65%),
+    linear-gradient(180deg, transparent 55%, rgba(40,5,5,0.95) 100%);
 }
-.portrait-afectado::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse at center, rgba(57,255,20,0.25) 0%, transparent 70%);
-  z-index: 2;
-  pointer-events: none;
-  animation: pulsarVerde 1.5s ease-in-out infinite;
+.portrait-afectado::after {
+  background:
+    radial-gradient(ellipse at center, rgba(36,60,30,0.3) 0%, transparent 65%),
+    linear-gradient(180deg, transparent 55%, rgba(0,0,0,0.9) 100%);
+  animation: pulsarVerde 2.5s ease-in-out infinite;
 }
 .portrait-inconsciente {
-  filter: grayscale(100%) brightness(0.5);
+  filter: grayscale(100%) brightness(0.35);
 }
-.portrait-shock::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse at center, rgba(255,255,255,0.15) 0%, transparent 70%);
-  z-index: 2;
-  pointer-events: none;
-  animation: parpadeoShock 0.1s steps(1) infinite;
+.portrait-shock {
+  animation: parpadeoShock 0.12s steps(1) infinite;
 }
 
 /* ══════════════════════════════════════════
    RADAR CHART
 ══════════════════════════════════════════ */
-.radar-container {
-  position: relative;
-}
+.radar-container { position: relative; }
 .recharts-polar-angle-axis-tick text {
-  font-family: 'Orbitron', monospace !important;
-  font-size: 10px !important;
+  font-family: 'Cinzel', serif !important;
+  font-size: 9px !important;
   font-weight: 600 !important;
-  fill: #8fa8c8 !important;
+  fill: var(--ash-light) !important;
   letter-spacing: 0.05em;
 }
 .recharts-polar-grid line,
 .recharts-polar-grid polygon {
-  stroke: rgba(58, 87, 122, 0.6) !important;
+  stroke: rgba(62, 50, 38, 0.7) !important;
 }
 
 /* ══════════════════════════════════════════
    LORE TEXT BOX
 ══════════════════════════════════════════ */
 .lore-box {
-  background:
-    linear-gradient(135deg, rgba(20,15,10,0.95) 0%, rgba(15,12,8,0.98) 100%);
-  border: 1px solid rgba(139, 100, 50, 0.4);
-  border-radius: 2px;
+  background: linear-gradient(160deg, rgba(10,8,4,0.97) 0%, rgba(15,12,8,0.99) 100%);
+  border: 1px solid var(--gold-dim);
   overflow-y: auto;
-  font-family: 'Rajdhani', sans-serif;
-  font-size: 13px;
-  line-height: 1.7;
-  color: #b8a070;
-  text-shadow: 0 0 8px rgba(139,100,50,0.2);
+  font-family: 'IM Fell English', Georgia, serif;
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--parchment);
+  letter-spacing: 0.01em;
+  box-shadow: inset 0 0 20px rgba(0,0,0,0.6);
 }
 
 /* ══════════════════════════════════════════
-   INPUT STYLES
+   INPUTS
 ══════════════════════════════════════════ */
 .hud-input {
-  background: var(--surface-1);
-  border: 1px solid var(--surface-border);
-  color: var(--foreground);
-  font-family: 'Rajdhani', sans-serif;
-  font-size: 14px;
+  background: var(--stone-abyss);
+  border: 1px solid var(--iron-edge);
+  color: var(--parchment);
+  font-family: 'Crimson Pro', Georgia, serif;
+  font-size: 15px;
   transition: border-color 0.2s, box-shadow 0.2s;
   outline: none;
 }
 .hud-input:focus {
-  border-color: var(--neon-blue);
-  box-shadow: 0 0 8px rgba(0,229,255,0.15);
+  border-color: var(--gold-dim);
+  box-shadow: 0 0 8px rgba(90,64,16,0.2);
 }
 
 .hud-select {
-  background: var(--surface-1);
-  border: 1px solid var(--surface-border);
-  color: var(--foreground);
-  font-family: 'Rajdhani', sans-serif;
+  background: var(--stone-abyss);
+  border: 1px solid var(--iron-edge);
+  color: var(--parchment);
+  font-family: 'Crimson Pro', Georgia, serif;
   appearance: none;
   cursor: pointer;
 }
 .hud-select:focus {
-  border-color: var(--neon-blue);
+  border-color: var(--gold-dim);
   outline: none;
 }
 
 /* ══════════════════════════════════════════
-   BOTÓN PRIMARIO
+   BOTONES
 ══════════════════════════════════════════ */
 .btn-primary {
-  background: linear-gradient(135deg, #1a2a4a, #0d1f3a);
-  border: 1px solid var(--neon-blue);
-  color: var(--neon-blue);
-  font-family: 'Orbitron', monospace;
-  font-size: 12px;
+  background: linear-gradient(135deg, var(--stone-dark), var(--iron-dark));
+  border: 1px solid var(--gold-dim);
+  color: var(--gold-bright);
+  font-family: 'Cinzel', serif;
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 0 8px rgba(0,229,255,0.1);
+  transition: all 0.25s ease;
 }
 .btn-primary:hover {
-  background: rgba(0,229,255,0.1);
-  box-shadow: 0 0 20px rgba(0,229,255,0.3);
+  background: linear-gradient(135deg, var(--iron-dark), var(--stone-mid));
+  border-color: var(--gold-base);
+  box-shadow: 0 0 16px rgba(90,64,16,0.25), inset 0 0 8px rgba(90,64,16,0.05);
   transform: translateY(-1px);
 }
 
 .btn-danger {
-  background: linear-gradient(135deg, #3a1a1a, #2a0d0d);
-  border: 1px solid var(--neon-red);
-  color: var(--neon-red);
-  font-family: 'Orbitron', monospace;
-  font-size: 12px;
+  background: linear-gradient(135deg, var(--blood-dark), var(--stone-dark));
+  border: 1px solid var(--blood-mid);
+  color: var(--bone);
+  font-family: 'Cinzel', serif;
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.25s ease;
 }
 .btn-danger:hover {
-  background: rgba(255,23,68,0.1);
-  box-shadow: 0 0 20px rgba(255,23,68,0.3);
+  border-color: var(--blood-base);
+  box-shadow: 0 0 16px rgba(107,24,24,0.25);
 }
 
 .btn-success {
-  background: linear-gradient(135deg, #1a3a1a, #0d2a0d);
-  border: 1px solid var(--neon-green);
-  color: var(--neon-green);
-  font-family: 'Orbitron', monospace;
-  font-size: 12px;
+  background: linear-gradient(135deg, var(--stamina-dark), var(--stone-dark));
+  border: 1px solid var(--stamina-base);
+  color: var(--bone);
+  font-family: 'Cinzel', serif;
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.25s ease;
 }
 .btn-success:hover {
-  background: rgba(118,255,3,0.1);
-  box-shadow: 0 0 20px rgba(118,255,3,0.3);
+  border-color: var(--stamina-bright);
+  box-shadow: 0 0 16px rgba(36,48,24,0.3);
 }
 
 /* ══════════════════════════════════════════
-   CONEXIÓN STATUS
+   PUNTO DE CONEXIÓN
 ══════════════════════════════════════════ */
 .connection-dot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  animation: pulsarDot 2s ease-in-out infinite;
+  animation: pulsarDot 2.5s ease-in-out infinite;
 }
-.connection-dot.online { background: var(--neon-green); box-shadow: 0 0 8px var(--neon-green); }
-.connection-dot.offline { background: #555; }
+.connection-dot.online  { background: #4a6030; box-shadow: 0 0 5px rgba(74,96,48,0.6); }
+.connection-dot.offline { background: #3a2a20; }
 
 /* ══════════════════════════════════════════
-   VIGNETTE OVERLAY
+   VIÑETAS DE ESTADO
 ══════════════════════════════════════════ */
 .vignette-red {
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 50;
-  background: radial-gradient(ellipse at center, transparent 40%, rgba(180, 0, 0, 0.35) 100%);
-  animation: pulsarRojo 2s ease-in-out infinite;
+  background: radial-gradient(ellipse at center, transparent 45%, rgba(107,24,24,0.4) 100%);
+  animation: pulsarRojo 2.5s ease-in-out infinite;
 }
-
 .vignette-green {
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 50;
-  background: radial-gradient(ellipse at center, transparent 40%, rgba(0, 160, 30, 0.25) 100%);
-  animation: pulsarVerde 2s ease-in-out infinite;
+  background: radial-gradient(ellipse at center, transparent 45%, rgba(36,60,30,0.3) 100%);
+  animation: pulsarVerde 2.5s ease-in-out infinite;
 }
 
 /* ══════════════════════════════════════════
-   ANIMACIONES
-══════════════════════════════════════════ */
-@keyframes pulsarRojo {
-  0%, 100% { opacity: 0.6; }
-  50% { opacity: 1; }
-}
-@keyframes pulsarVerde {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 1; }
-}
-@keyframes pulsarDot {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.6; transform: scale(0.85); }
-}
-@keyframes parpadeoShock {
-  0% { opacity: 0.8; }
-  25% { opacity: 0; }
-  50% { opacity: 0.6; }
-  75% { opacity: 0; }
-  100% { opacity: 0.8; }
-}
-@keyframes electricoBorde {
-  0%, 100% { box-shadow: 0 0 10px #fff, 0 0 20px #fff, 0 0 40px #e0f0ff, 0 0 80px #c0e0ff; }
-  50% { box-shadow: 0 0 5px #adf, 0 0 15px #adf, 0 0 30px #8cf, 0 0 60px #6af; }
-}
-@keyframes giroHue {
-  0% { filter: hue-rotate(0deg) saturate(1.5); }
-  100% { filter: hue-rotate(360deg) saturate(1.5); }
-}
-@keyframes aparecer {
-  from { opacity: 0; transform: translateY(4px) scale(0.96); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
-}
-@keyframes scanline {
-  0% { transform: translateY(-100%); }
-  100% { transform: translateY(100vh); }
-}
-
-/* ══════════════════════════════════════════
-   EFECTO SCANLINE
-══════════════════════════════════════════ */
-.scanlines::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 9999;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(0,0,0,0.03) 2px,
-    rgba(0,0,0,0.03) 4px
-  );
-}
-
-/* ══════════════════════════════════════════
-   EFECTO LIGHTNING (En la Zona)
-══════════════════════════════════════════ */
-.lightning-border {
-  animation: electricoBorde 0.5s ease-in-out infinite alternate;
-}
-
-/* ══════════════════════════════════════════
-   DIVISOR METÁLICO
+   DIVISOR — Runa grabada
 ══════════════════════════════════════════ */
 .metal-divider {
   height: 1px;
-  background: linear-gradient(90deg, transparent, var(--surface-border-bright), transparent);
+  background: linear-gradient(90deg, transparent, var(--gold-dim), transparent);
+  opacity: 0.6;
+}
+.rune-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--gold-dim);
+}
+.rune-divider::before,
+.rune-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold-dim));
+}
+.rune-divider::after {
+  background: linear-gradient(90deg, var(--gold-dim), transparent);
 }
 
 /* ══════════════════════════════════════════
    ETIQUETAS HUD
 ══════════════════════════════════════════ */
 .hud-label {
-  font-family: 'Orbitron', monospace;
+  font-family: 'Cinzel', serif;
   font-size: 9px;
   font-weight: 600;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--metal-bright);
+  color: var(--ash-light);
 }
 
 /* ══════════════════════════════════════════
-   SLIDER DM
+   SLIDER DM — Hierro y piedra
 ══════════════════════════════════════════ */
 input[type="range"] {
   -webkit-appearance: none;
   appearance: none;
-  height: 4px;
-  background: var(--surface-border);
-  border-radius: 2px;
+  height: 3px;
+  background: var(--iron-dark);
+  border-radius: 1px;
   outline: none;
+  border: 1px solid var(--iron-edge);
 }
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: var(--neon-blue);
-  box-shadow: 0 0 8px var(--neon-blue);
+  width: 14px;
+  height: 14px;
+  border-radius: 1px;
+  background: var(--gold-mid);
+  border: 1px solid var(--gold-bright);
+  box-shadow: 0 0 4px rgba(90,64,16,0.4);
   cursor: pointer;
 }
-input[type="range"].hp-slider::-webkit-slider-thumb { background: var(--neon-red); box-shadow: 0 0 8px var(--neon-red); }
-input[type="range"].mana-slider::-webkit-slider-thumb { background: var(--neon-blue); box-shadow: 0 0 8px var(--neon-blue); }
-input[type="range"].stamina-slider::-webkit-slider-thumb { background: var(--neon-green); box-shadow: 0 0 8px var(--neon-green); }
+input[type="range"].hp-slider::-webkit-slider-thumb     { background: var(--blood-base); border-color: var(--blood-bright); box-shadow: 0 0 4px rgba(107,24,24,0.4); }
+input[type="range"].mana-slider::-webkit-slider-thumb   { background: var(--mana-base);  border-color: var(--mana-bright);  box-shadow: 0 0 4px rgba(36,48,80,0.4); }
+input[type="range"].stamina-slider::-webkit-slider-thumb { background: var(--stamina-base); border-color: var(--stamina-bright); box-shadow: 0 0 4px rgba(36,48,24,0.4); }
 
-/* Animación de entrada página */
-.page-enter {
-  animation: aparecer 0.4s ease-out forwards;
+/* ══════════════════════════════════════════
+   LIGHTNING BORDER (En la Zona)
+══════════════════════════════════════════ */
+.lightning-border {
+  animation: goldPulse 0.8s ease-in-out infinite alternate;
 }
+
+/* ══════════════════════════════════════════
+   ANIMACIONES
+══════════════════════════════════════════ */
+@keyframes pulsarRojo {
+  0%, 100% { opacity: 0.5; }
+  50%       { opacity: 0.9; }
+}
+@keyframes pulsarVerde {
+  0%, 100% { opacity: 0.4; }
+  50%       { opacity: 0.8; }
+}
+@keyframes pulsarDot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(0.8); }
+}
+@keyframes parpadeoShock {
+  0%   { filter: brightness(1.4) sepia(0.3); }
+  50%  { filter: brightness(0.7); }
+  100% { filter: brightness(1.4) sepia(0.3); }
+}
+@keyframes goldPulse {
+  0%   { box-shadow: 0 0 6px rgba(154,112,32,0.3), inset 0 0 6px rgba(154,112,32,0.05); }
+  100% { box-shadow: 0 0 16px rgba(154,112,32,0.6), inset 0 0 12px rgba(154,112,32,0.1); }
+}
+@keyframes aparecer {
+  from { opacity: 0; transform: translateY(6px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes torchFlicker {
+  0%, 100% { opacity: 1; }
+  25%       { opacity: 0.92; }
+  50%       { opacity: 0.96; }
+  75%       { opacity: 0.88; }
+}
+
+/* Animación de entrada */
+.page-enter { animation: aparecer 0.5s ease-out forwards; }
+
+/* Parpadeo de antorcha para acentos dorados */
+.torch-flicker { animation: torchFlicker 3s ease-in-out infinite; }
+
+/* Esquinas decorativas tipo runa */
+.corner-tl, .corner-tr, .corner-bl, .corner-br {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-color: var(--gold-dim);
+  border-style: solid;
+  opacity: 0.7;
+}
+.corner-tl { top: 4px; left: 4px;  border-width: 1px 0 0 1px; }
+.corner-tr { top: 4px; right: 4px; border-width: 1px 1px 0 0; }
+.corner-bl { bottom: 4px; left: 4px;  border-width: 0 0 1px 1px; }
+.corner-br { bottom: 4px; right: 4px; border-width: 0 1px 1px 0; }

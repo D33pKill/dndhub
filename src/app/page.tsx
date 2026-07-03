@@ -1,205 +1,235 @@
 'use client';
 
-import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import Image from 'next/image';
 
 export default function LandingPage() {
   const router = useRouter();
 
-  useEffect(() => {
-    // Limpiar selección de rol previa si viene de raíz
-  }, []);
-
   return (
-    <div className="bg-hud min-h-screen flex flex-col items-center justify-center relative overflow-hidden">
-      {/* Partículas decorativas */}
+    <div className="bg-dungeon min-h-screen flex flex-col items-center justify-center relative overflow-hidden">
+
+      {/* Partículas de polvo / ceniza flotante */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {Array.from({ length: 20 }).map((_, i) => (
+        {Array.from({ length: 18 }).map((_, i) => (
           <motion.div
             key={i}
-            className="absolute w-px h-px bg-white rounded-full opacity-30"
+            className="absolute rounded-full"
             style={{
+              width: `${1 + Math.random() * 2}px`,
+              height: `${1 + Math.random() * 2}px`,
               left: `${Math.random() * 100}%`,
               top: `${Math.random() * 100}%`,
+              background: `rgba(${150 + Math.random() * 50}, ${120 + Math.random() * 30}, ${60 + Math.random() * 30}, 0.35)`,
             }}
             animate={{
-              opacity: [0.1, 0.6, 0.1],
-              scale: [1, 2, 1],
+              y: [0, -60 - Math.random() * 80],
+              x: [0, (Math.random() - 0.5) * 40],
+              opacity: [0, 0.5, 0],
             }}
             transition={{
-              duration: 2 + Math.random() * 4,
+              duration: 6 + Math.random() * 8,
               repeat: Infinity,
-              delay: Math.random() * 3,
+              delay: Math.random() * 8,
+              ease: 'easeOut',
             }}
           />
         ))}
       </div>
 
-      {/* Líneas decorativas laterales */}
-      <div className="absolute left-0 top-0 bottom-0 w-1"
-        style={{ background: 'linear-gradient(180deg, transparent, #ff1744, transparent)' }} />
-      <div className="absolute right-0 top-0 bottom-0 w-1"
-        style={{ background: 'linear-gradient(180deg, transparent, #00e5ff, transparent)' }} />
+      {/* Viñeta perimetral */}
+      <div className="absolute inset-0 pointer-events-none"
+        style={{
+          boxShadow: 'inset 0 0 120px rgba(0,0,0,0.8), inset 0 0 60px rgba(0,0,0,0.5)',
+        }}
+      />
 
+      {/* Contenido central */}
       <motion.div
-        initial={{ opacity: 0, y: -30 }}
+        initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, ease: 'easeOut' }}
-        className="text-center mb-16 px-4"
+        transition={{ duration: 1, ease: 'easeOut' }}
+        className="text-center mb-14 px-4"
       >
-        {/* Logo / Título */}
-        <div className="relative mb-4">
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-64 h-px" style={{ background: 'linear-gradient(90deg, transparent, #ff1744, transparent)' }} />
-          </div>
-          <span className="font-hud text-xs tracking-[0.4em] uppercase relative px-4"
-            style={{ color: '#ff1744' }}>
-            Sistema de campaña
+        {/* Ornamento superior */}
+        <div className="flex items-center justify-center gap-4 mb-6 opacity-60">
+          <div className="h-px w-24" style={{ background: 'linear-gradient(90deg, transparent, #7a5818)' }} />
+          <span className="font-heading text-xs tracking-[0.4em] uppercase" style={{ color: '#7a5818' }}>
+            ✦
           </span>
+          <span className="font-heading text-xs tracking-[0.4em] uppercase" style={{ color: '#7a5818' }}>
+            Crónica de campaña
+          </span>
+          <span className="font-heading text-xs tracking-[0.4em] uppercase" style={{ color: '#7a5818' }}>
+            ✦
+          </span>
+          <div className="h-px w-24" style={{ background: 'linear-gradient(90deg, #7a5818, transparent)' }} />
         </div>
 
-        <h1 className="font-heading text-5xl md:text-7xl font-black mb-3 tracking-wide"
+        <h1
+          className="font-heading font-black mb-2 tracking-wider"
           style={{
-            background: 'linear-gradient(135deg, #c8d0e0, #ffffff, #8fa8c8)',
+            fontSize: 'clamp(2.8rem, 8vw, 5.5rem)',
+            background: 'linear-gradient(180deg, #c8a048 0%, #9a7020 40%, #7a5818 100%)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
-            textShadow: 'none',
-            filter: 'drop-shadow(0 0 20px rgba(200,208,224,0.3))'
-          }}>
+            filter: 'drop-shadow(0 2px 8px rgba(90,64,16,0.4))',
+            letterSpacing: '0.08em',
+          }}
+        >
           PANEL TÁCTICO
         </h1>
-        <p className="font-hud text-sm tracking-[0.3em] uppercase"
-          style={{ color: '#00e5ff' }}>
+        <p
+          className="font-heading text-sm tracking-[0.35em] uppercase mb-6"
+          style={{ color: '#5a4010', letterSpacing: '0.4em' }}
+        >
           Campaña de Fantasía Oscura
         </p>
 
-        <div className="mt-4 metal-divider w-48 mx-auto" />
+        {/* Divider rúnico */}
+        <div className="flex items-center justify-center gap-3 mb-2 opacity-50">
+          <div className="h-px w-16" style={{ background: 'linear-gradient(90deg, transparent, #5a4010)' }} />
+          <span style={{ color: '#5a4010', fontSize: '10px' }}>⬡</span>
+          <div className="h-px w-16" style={{ background: 'linear-gradient(90deg, #5a4010, transparent)' }} />
+        </div>
       </motion.div>
 
-      {/* Tarjetas de selección de rol */}
-      <div className="flex flex-col sm:flex-row gap-6 px-4">
+      {/* Tarjetas de selección */}
+      <div className="flex flex-col sm:flex-row gap-5 px-4">
+
         {/* JUGADOR */}
         <motion.button
-          initial={{ opacity: 0, x: -40 }}
+          initial={{ opacity: 0, x: -30 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.7, delay: 0.2 }}
-          whileHover={{ scale: 1.04, y: -4 }}
-          whileTap={{ scale: 0.98 }}
+          transition={{ duration: 0.8, delay: 0.3 }}
+          whileHover={{ scale: 1.02, y: -3 }}
+          whileTap={{ scale: 0.99 }}
           onClick={() => router.push('/jugador')}
           className="relative group cursor-pointer text-left"
           style={{
             width: '260px',
-            background: 'linear-gradient(135deg, #0d1117, #131820)',
-            border: '1px solid #2a3548',
-            borderRadius: '4px',
+            background: 'linear-gradient(160deg, #130f0b 0%, #0c0a07 100%)',
+            border: '1px solid #3d3028',
             padding: '32px 28px',
             transition: 'border-color 0.3s, box-shadow 0.3s',
           }}
           onMouseEnter={e => {
-            (e.currentTarget as HTMLElement).style.borderColor = '#ff1744';
-            (e.currentTarget as HTMLElement).style.boxShadow = '0 0 30px rgba(255,23,68,0.2), inset 0 0 20px rgba(255,23,68,0.05)';
+            (e.currentTarget as HTMLElement).style.borderColor = '#7a5818';
+            (e.currentTarget as HTMLElement).style.boxShadow = '0 0 30px rgba(90,64,16,0.15), inset 0 0 20px rgba(90,64,16,0.04)';
           }}
           onMouseLeave={e => {
-            (e.currentTarget as HTMLElement).style.borderColor = '#2a3548';
+            (e.currentTarget as HTMLElement).style.borderColor = '#3d3028';
             (e.currentTarget as HTMLElement).style.boxShadow = 'none';
           }}
         >
-          {/* Icono */}
-          <div className="mb-5 flex items-center justify-center w-14 h-14 rounded-sm"
-            style={{ background: 'rgba(255,23,68,0.1)', border: '1px solid rgba(255,23,68,0.3)' }}>
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ff1744" strokeWidth="1.5">
-              <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-              <path d="M2 17l10 5 10-5"/>
-              <path d="M2 12l10 5 10-5"/>
+          {/* Esquinas decorativas */}
+          <div className="corner-tl" />
+          <div className="corner-tr" />
+          <div className="corner-bl" />
+          <div className="corner-br" />
+
+          {/* Icono — Espada */}
+          <div className="mb-5 flex items-center justify-center w-14 h-14"
+            style={{ background: 'rgba(107,24,24,0.1)', border: '1px solid rgba(107,24,24,0.25)' }}>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#8b2020" strokeWidth="1.2">
+              <path d="M14.5 17.5L3 6V3h3l11.5 11.5"/>
+              <path d="M13 19l6-6"/>
+              <path d="M2 2l20 20"/>
             </svg>
           </div>
 
-          <h2 className="font-hud text-xl font-bold mb-2" style={{ color: '#ff1744' }}>
+          <h2 className="font-heading text-lg font-bold mb-2" style={{ color: '#9a7020', letterSpacing: '0.1em' }}>
             SOY JUGADOR
           </h2>
-          <p className="font-sans text-sm leading-relaxed" style={{ color: '#7a8a9a' }}>
-            Crea tu personaje, sube tus retratos y accede a tu panel de combate en tiempo real.
+          <p className="font-sans text-sm leading-relaxed" style={{ color: '#7a6e60', fontSize: '14px' }}>
+            Forja tu destino. Crea tu personaje, sube tus retratos y accede a tu panel de combate en tiempo real.
           </p>
 
-          <div className="mt-5 flex items-center gap-2 hud-label" style={{ color: '#ff1744' }}>
-            <span>Entrar al HUD</span>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <div className="mt-5 flex items-center gap-2" style={{ color: '#5a4010', fontSize: '10px', fontFamily: 'Cinzel, serif', letterSpacing: '0.15em' }}>
+            <span>ENTRAR AL HUD</span>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M5 12h14M12 5l7 7-7 7"/>
             </svg>
           </div>
 
-          {/* Brillo de esquina */}
-          <div className="absolute top-0 right-0 w-12 h-12 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-            style={{ background: 'radial-gradient(circle at top right, rgba(255,23,68,0.15), transparent 70%)' }} />
+          {/* Brillo en hover */}
+          <div className="absolute top-0 right-0 w-24 h-24 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+            style={{ background: 'radial-gradient(circle at top right, rgba(90,64,16,0.12), transparent 70%)' }} />
         </motion.button>
 
         {/* DM */}
         <motion.button
-          initial={{ opacity: 0, x: 40 }}
+          initial={{ opacity: 0, x: 30 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.7, delay: 0.3 }}
-          whileHover={{ scale: 1.04, y: -4 }}
-          whileTap={{ scale: 0.98 }}
+          transition={{ duration: 0.8, delay: 0.4 }}
+          whileHover={{ scale: 1.02, y: -3 }}
+          whileTap={{ scale: 0.99 }}
           onClick={() => router.push('/dm/login')}
           className="relative group cursor-pointer text-left"
           style={{
             width: '260px',
-            background: 'linear-gradient(135deg, #0d1117, #131820)',
-            border: '1px solid #2a3548',
-            borderRadius: '4px',
+            background: 'linear-gradient(160deg, #0c0a07 0%, #130f0b 100%)',
+            border: '1px solid #3d3028',
             padding: '32px 28px',
             transition: 'border-color 0.3s, box-shadow 0.3s',
           }}
           onMouseEnter={e => {
-            (e.currentTarget as HTMLElement).style.borderColor = '#00e5ff';
-            (e.currentTarget as HTMLElement).style.boxShadow = '0 0 30px rgba(0,229,255,0.2), inset 0 0 20px rgba(0,229,255,0.05)';
+            (e.currentTarget as HTMLElement).style.borderColor = '#7a5818';
+            (e.currentTarget as HTMLElement).style.boxShadow = '0 0 30px rgba(90,64,16,0.15), inset 0 0 20px rgba(90,64,16,0.04)';
           }}
           onMouseLeave={e => {
-            (e.currentTarget as HTMLElement).style.borderColor = '#2a3548';
+            (e.currentTarget as HTMLElement).style.borderColor = '#3d3028';
             (e.currentTarget as HTMLElement).style.boxShadow = 'none';
           }}
         >
-          {/* Icono */}
-          <div className="mb-5 flex items-center justify-center w-14 h-14 rounded-sm"
-            style={{ background: 'rgba(0,229,255,0.1)', border: '1px solid rgba(0,229,255,0.3)' }}>
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#00e5ff" strokeWidth="1.5">
-              <circle cx="12" cy="8" r="4"/>
-              <path d="M2 20a10 10 0 0 1 20 0"/>
-              <path d="M12 14v4M8 18h8"/>
+          <div className="corner-tl" />
+          <div className="corner-tr" />
+          <div className="corner-bl" />
+          <div className="corner-br" />
+
+          {/* Icono — Calavera / Corona */}
+          <div className="mb-5 flex items-center justify-center w-14 h-14"
+            style={{ background: 'rgba(36,48,80,0.12)', border: '1px solid rgba(36,48,80,0.3)' }}>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#3a4870" strokeWidth="1.2">
+              <path d="M12 2a7 7 0 0 1 7 7c0 2.5-1.3 4.7-3.2 6l-.8 3H9l-.8-3C6.3 13.7 5 11.5 5 9a7 7 0 0 1 7-7z"/>
+              <path d="M9 18h6M10 22h4"/>
             </svg>
           </div>
 
-          <h2 className="font-hud text-xl font-bold mb-2" style={{ color: '#00e5ff' }}>
+          <h2 className="font-heading text-lg font-bold mb-2" style={{ color: '#9a7020', letterSpacing: '0.1em' }}>
             SOY DM
           </h2>
-          <p className="font-sans text-sm leading-relaxed" style={{ color: '#7a8a9a' }}>
-            Accede al panel maestro. Controla estadísticas, condiciones y estados de todos los jugadores.
+          <p className="font-sans text-sm leading-relaxed" style={{ color: '#7a6e60', fontSize: '14px' }}>
+            El Maestro del Calabozo. Controla estadísticas, condiciones y el destino de todos los héroes.
           </p>
 
-          <div className="mt-5 flex items-center gap-2 hud-label" style={{ color: '#00e5ff' }}>
-            <span>Panel Maestro</span>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <div className="mt-5 flex items-center gap-2" style={{ color: '#5a4010', fontSize: '10px', fontFamily: 'Cinzel, serif', letterSpacing: '0.15em' }}>
+            <span>PANEL MAESTRO</span>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M5 12h14M12 5l7 7-7 7"/>
             </svg>
           </div>
 
-          <div className="absolute top-0 right-0 w-12 h-12 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-            style={{ background: 'radial-gradient(circle at top right, rgba(0,229,255,0.15), transparent 70%)' }} />
+          <div className="absolute top-0 right-0 w-24 h-24 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+            style={{ background: 'radial-gradient(circle at top right, rgba(36,48,80,0.1), transparent 70%)' }} />
         </motion.button>
       </div>
 
       {/* Footer */}
-      <motion.p
+      <motion.div
         initial={{ opacity: 0 }}
-        animate={{ opacity: 0.4 }}
-        transition={{ delay: 1 }}
-        className="absolute bottom-6 hud-label"
-        style={{ color: '#3d5270' }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 1.2 }}
+        className="absolute bottom-6 flex flex-col items-center gap-1"
       >
-        Sistema de seguimiento táctico v1.0
-      </motion.p>
+        <div className="flex items-center gap-3 opacity-30">
+          <div className="h-px w-12" style={{ background: '#5a4010' }} />
+          <span className="font-heading text-xs tracking-[0.3em] uppercase" style={{ color: '#5a4010', fontSize: '8px' }}>
+            v1.0 — Sistema de seguimiento táctico
+          </span>
+          <div className="h-px w-12" style={{ background: '#5a4010' }} />
+        </div>
+      </motion.div>
     </div>
   );
 }

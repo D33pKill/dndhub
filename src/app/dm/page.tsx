@@ -74,15 +74,15 @@ export default function DMPage() {
 
   if (personajes.length === 0) {
     return (
-      <div className="bg-hud min-h-screen flex flex-col items-center justify-center gap-6">
+      <div className="bg-dungeon min-h-screen flex flex-col items-center justify-center gap-6">
         <div className="text-center">
-          <p className="font-hud text-lg mb-2" style={{ color: '#00e5ff' }}>PANEL MAESTRO</p>
-          <p className="font-sans text-sm" style={{ color: '#4a607d' }}>No hay personajes registrados todavía.</p>
-          <p className="font-sans text-xs mt-2" style={{ color: '#3d5270' }}>Los jugadores deben crear sus personajes primero.</p>
+          <p className="font-heading text-lg mb-2" style={{ color: '#9a7020', letterSpacing: '0.1em' }}>PANEL MAESTRO</p>
+          <p className="font-sans text-sm" style={{ color: '#5a4e40' }}>No hay almas registradas todavía.</p>
+          <p className="font-sans text-xs mt-2" style={{ color: '#3d3028' }}>Los jugadores deben crear sus personajes primero.</p>
         </div>
         <button
           onClick={() => router.push('/')}
-          className="btn-primary px-6 py-3 rounded-sm"
+          className="btn-primary px-6 py-3"
         >
           VOLVER AL INICIO
         </button>
@@ -91,20 +91,20 @@ export default function DMPage() {
   }
 
   return (
-    <div className="bg-hud min-h-screen flex flex-col">
+    <div className="bg-dungeon min-h-screen flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-3 border-b"
-        style={{ borderColor: '#2a3548', background: 'rgba(13,17,23,0.95)' }}>
+        style={{ borderColor: '#1c1712', background: 'rgba(6,4,2,0.95)' }}>
         <div className="flex items-center gap-3">
-          <div className="w-2 h-2 rounded-full connection-dot online" />
-          <span className="font-heading text-lg font-bold" style={{ color: '#00e5ff' }}>PANEL MAESTRO</span>
-          <span className="hud-label px-2 py-0.5 rounded-sm" style={{ background: 'rgba(0,229,255,0.1)', border: '1px solid rgba(0,229,255,0.2)', color: '#00e5ff' }}>
+          <div className="connection-dot online" />
+          <span className="font-heading text-base font-bold" style={{ color: '#9a7020', letterSpacing: '0.1em' }}>PANEL MAESTRO</span>
+          <span className="font-heading px-2 py-0.5" style={{ background: 'rgba(90,64,16,0.1)', border: '1px solid #5a4010', color: '#7a5818', fontSize: '9px', letterSpacing: '0.15em' }}>
             DM
           </span>
         </div>
         <div className="flex items-center gap-4">
-          <span className="hud-label" style={{ color: '#4a607d' }}>{personajes.length} PERSONAJE{personajes.length !== 1 ? 'S' : ''} ACTIVO{personajes.length !== 1 ? 'S' : ''}</span>
-          <button onClick={() => router.push('/')} className="btn-primary px-3 py-1.5 rounded-sm text-xs">
+          <span className="hud-label" style={{ color: '#5a4e40' }}>{personajes.length} ALMA{personajes.length !== 1 ? 'S' : ''} ACTIVA{personajes.length !== 1 ? 'S' : ''}</span>
+          <button onClick={() => router.push('/')} className="btn-primary px-3 py-1.5 text-xs">
             SALIR
           </button>
         </div>
@@ -113,8 +113,8 @@ export default function DMPage() {
       <div className="flex flex-1 overflow-hidden">
         {/* Columna izquierda: tarjetas de jugadores */}
         <div className="w-72 flex-shrink-0 border-r overflow-y-auto p-4 space-y-3"
-          style={{ borderColor: '#2a3548', background: 'rgba(13,17,23,0.5)' }}>
-          <p className="hud-label mb-4" style={{ color: '#4a607d' }}>JUGADORES</p>
+          style={{ borderColor: '#1c1712', background: 'rgba(6,4,2,0.6)' }}>
+          <p className="hud-label mb-4" style={{ color: '#5a4e40' }}>ALMAS EN JUEGO</p>
           {personajes.map(p => (
             <PlayerCardDM
               key={p.id}
@@ -139,31 +139,31 @@ export default function DMPage() {
             />
           ) : (
             <div className="flex-1 flex items-center justify-center h-full">
-              <div className="text-center" style={{ color: '#3d5270' }}>
-                <svg className="mx-auto mb-4 opacity-30" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
+              <div className="text-center" style={{ color: '#3d3028' }}>
+                <svg className="mx-auto mb-4 opacity-20" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
                   <circle cx="12" cy="8" r="4"/><path d="M2 20a10 10 0 0 1 20 0"/>
                 </svg>
-                <p className="font-hud text-sm">Selecciona un personaje para controlarlo</p>
+                <p className="font-heading text-sm" style={{ letterSpacing: '0.1em' }}>Selecciona un alma para controlarla</p>
               </div>
             </div>
           )}
         </div>
 
         {/* Log de acciones */}
-        <div className="w-64 flex-shrink-0 border-l overflow-y-auto"
-          style={{ borderColor: '#2a3548', background: 'rgba(8,10,14,0.8)' }}>
+        <div className="w-60 flex-shrink-0 border-l overflow-y-auto"
+          style={{ borderColor: '#1c1712', background: 'rgba(6,4,2,0.8)' }}>
           <div className="p-3 border-b sticky top-0"
-            style={{ borderColor: '#2a3548', background: 'rgba(13,17,23,0.95)' }}>
-            <p className="hud-label" style={{ color: '#4a607d' }}>REGISTRO DE ACCIONES</p>
+            style={{ borderColor: '#1c1712', background: 'rgba(6,4,2,0.98)' }}>
+            <p className="hud-label" style={{ color: '#5a4e40' }}>CRÓNICA DE ACCIONES</p>
           </div>
           <div className="p-3 space-y-2">
             {log.length === 0 && (
-              <p className="text-xs" style={{ color: '#3d5270' }}>Sin acciones todavía.</p>
+              <p className="font-lore text-sm" style={{ color: '#3d3028' }}>Sin acciones todavía.</p>
             )}
             {log.map(entry => (
-              <div key={entry.id} className="text-xs" style={{ color: '#7a8a9a' }}>
-                <span className="font-hud" style={{ color: '#3d5270', fontSize: '9px' }}>{entry.ts}</span>
-                <p>{entry.msg}</p>
+              <div key={entry.id} style={{ color: '#7a6e60' }}>
+                <span className="font-heading" style={{ color: '#3d3028', fontSize: '8px', letterSpacing: '0.1em' }}>{entry.ts}</span>
+                <p style={{ fontSize: '12px', fontFamily: 'Crimson Pro, serif' }}>{entry.msg}</p>
               </div>
             ))}
           </div>
@@ -185,14 +185,14 @@ function PlayerCardDM({ personaje, seleccionado, onClick }: {
 
   return (
     <motion.div
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
+      whileHover={{ scale: 1.01 }}
+      whileTap={{ scale: 0.99 }}
       onClick={onClick}
-      className="cursor-pointer rounded-sm p-3 transition-all"
+      className="cursor-pointer p-3 transition-all stone-frame"
       style={{
-        background: seleccionado ? 'rgba(0,229,255,0.05)' : 'rgba(13,17,23,0.8)',
-        border: `1px solid ${seleccionado ? '#00e5ff' : '#2a3548'}`,
-        boxShadow: seleccionado ? '0 0 16px rgba(0,229,255,0.15)' : 'none',
+        borderColor: seleccionado ? '#7a5818' : '#2e2820',
+        background: seleccionado ? 'rgba(90,64,16,0.06)' : undefined,
+        boxShadow: seleccionado ? '0 0 16px rgba(90,64,16,0.12)' : 'none',
       }}
     >
       <div className="flex items-center gap-3 mb-3">
@@ -305,33 +305,37 @@ function DMControlPanel({ personaje, tab, setTab, onStat, onToggleCondicion, onT
           )}
         </div>
         <div>
-          <h2 className="font-heading text-2xl font-bold" style={{ color: personaje.color_acento }}>
+          <h2 className="font-heading text-xl font-bold" style={{ color: '#b88c30', letterSpacing: '0.06em' }}>
             {personaje.nombre}
           </h2>
-          <p className="hud-label" style={{ color: '#4a607d' }}>
+          <p className="hud-label" style={{ color: '#5a4e40' }}>
             {personaje.raza} · {personaje.clase} · Nivel {personaje.nivel}
           </p>
         </div>
         <div className="ml-auto flex gap-2">
           <div
-            className="px-3 py-1 rounded-sm hud-label"
+            className="px-3 py-1 font-heading"
             style={{
-              background: personaje.destello_negro ? 'rgba(255,255,255,0.1)' : 'rgba(13,17,23,0.8)',
-              border: `1px solid ${personaje.destello_negro ? '#ffffff' : '#2a3548'}`,
-              color: personaje.destello_negro ? '#fff' : '#3d5270',
+              background: personaje.destello_negro ? 'rgba(154,112,32,0.1)' : 'rgba(12,10,7,0.8)',
+              border: `1px solid ${personaje.destello_negro ? '#9a7020' : '#2e2820'}`,
+              color: personaje.destello_negro ? '#c8a048' : '#3d3028',
+              fontSize: '9px',
+              letterSpacing: '0.12em',
             }}
           >
-            ⚡ DESTELLO NEGRO
+            ❖ DESTELLO NEGRO
           </div>
           <div
-            className="px-3 py-1 rounded-sm hud-label"
+            className="px-3 py-1 font-heading"
             style={{
-              background: personaje.fallo_magico ? 'rgba(255,100,0,0.1)' : 'rgba(13,17,23,0.8)',
-              border: `1px solid ${personaje.fallo_magico ? '#ff6d00' : '#2a3548'}`,
-              color: personaje.fallo_magico ? '#ff6d00' : '#3d5270',
+              background: personaje.fallo_magico ? 'rgba(90,40,16,0.1)' : 'rgba(12,10,7,0.8)',
+              border: `1px solid ${personaje.fallo_magico ? '#5a2810' : '#2e2820'}`,
+              color: personaje.fallo_magico ? '#8b4820' : '#3d3028',
+              fontSize: '9px',
+              letterSpacing: '0.12em',
             }}
           >
-            💥 FALLO MÁGICO
+            ☠ FALLO MÁGICO
           </div>
         </div>
       </div>
@@ -344,11 +348,11 @@ function DMControlPanel({ personaje, tab, setTab, onStat, onToggleCondicion, onT
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className="px-4 py-2 hud-label transition-all rounded-sm"
+            className="px-4 py-2 hud-label transition-all"
             style={{
-              background: tab === t.id ? 'rgba(0,229,255,0.1)' : 'transparent',
-              border: `1px solid ${tab === t.id ? '#00e5ff' : '#2a3548'}`,
-              color: tab === t.id ? '#00e5ff' : '#4a607d',
+              background: tab === t.id ? 'rgba(90,64,16,0.12)' : 'transparent',
+              border: `1px solid ${tab === t.id ? '#7a5818' : '#2e2820'}`,
+              color: tab === t.id ? '#b88c30' : '#5a4e40',
               cursor: 'pointer',
             }}
           >
@@ -364,17 +368,17 @@ function DMControlPanel({ personaje, tab, setTab, onStat, onToggleCondicion, onT
             label="SALUD (HP)"
             value={personaje.hp}
             max={personaje.hp_max}
-            color="#ff1744"
+            color="#6b1818"
             colorClass="hp-slider"
             pct={hpPct}
             onChange={v => onStat(personaje.id, personaje.nombre, 'hp', v)}
             onChangeMax={v => onStat(personaje.id, personaje.nombre, 'hp_max', v)}
           />
           <StatSlider
-            label="MAGIA (MANA)"
+            label="MANÁ"
             value={personaje.mana}
             max={personaje.mana_max}
-            color="#00b0ff"
+            color="#3a4870"
             colorClass="mana-slider"
             pct={manaPct}
             onChange={v => onStat(personaje.id, personaje.nombre, 'mana', v)}
@@ -384,7 +388,7 @@ function DMControlPanel({ personaje, tab, setTab, onStat, onToggleCondicion, onT
             label="ESTAMINA"
             value={personaje.estamina}
             max={personaje.estamina_max}
-            color="#76ff03"
+            color="#344020"
             colorClass="stamina-slider"
             pct={stamPct}
             onChange={v => onStat(personaje.id, personaje.nombre, 'estamina', v)}
@@ -402,24 +406,24 @@ function DMControlPanel({ personaje, tab, setTab, onStat, onToggleCondicion, onT
             return (
               <motion.button
                 key={cond}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.97 }}
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => onToggleCondicion(personaje.id, personaje.nombre, cond)}
-                className="p-3 rounded-sm text-left transition-all cursor-pointer"
+                className="p-3 text-left transition-all cursor-pointer stone-frame"
                 style={{
-                  background: activa ? `${info.color}15` : 'rgba(13,17,23,0.8)',
-                  border: `1px solid ${activa ? info.color : '#2a3548'}`,
-                  boxShadow: activa ? `0 0 12px ${info.color}30` : 'none',
+                  borderColor: activa ? '#7a5818' : '#2e2820',
+                  background: activa ? 'rgba(90,64,16,0.08)' : undefined,
+                  boxShadow: activa ? '0 0 12px rgba(90,64,16,0.15)' : 'none',
                 }}
               >
                 <div className="flex items-center gap-2 mb-1">
-                  <div className="w-2 h-2 rounded-full"
-                    style={{ background: activa ? info.color : '#3d5270', boxShadow: activa ? `0 0 6px ${info.color}` : 'none' }} />
-                  <span className="hud-label" style={{ color: activa ? info.color : '#4a607d' }}>
+                  <div className="w-1.5 h-1.5"
+                    style={{ background: activa ? '#9a7020' : '#3d3028' }} />
+                  <span className="hud-label" style={{ color: activa ? '#b88c30' : '#5a4e40' }}>
                     {info.nombre.toUpperCase()}
                   </span>
                 </div>
-                <p className="text-xs ml-4" style={{ color: '#4a607d' }}>{info.descripcion}</p>
+                <p className="font-lore ml-3" style={{ color: '#5a4e40', fontSize: '12px' }}>{info.descripcion}</p>
               </motion.button>
             );
           })}
