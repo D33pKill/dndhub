@@ -38,7 +38,7 @@ function lsSet(personajes: Personaje[]) {
 }
 
 /**
- * Guarda en localStorage omitiendo los retratos base64 (pueden ser muy grandes).
+ * Guarda en localStorage omitting los retratos base64 (pueden ser muy grandes).
  * Las URLs de Supabase Storage son strings cortos y se pueden guardar sin problema.
  * Los data: URLs (base64) se descartan para evitar QuotaExceededError.
  */
@@ -92,14 +92,61 @@ export async function subirRetrato(
       const { data } = supabase.storage
         .from('retratos')
         .getPublicUrl(path);
-      // Añadir timestamp para busting de caché
       return `${data.publicUrl}?t=${Date.now()}`;
     }
-    // Si falla Storage, caer a base64
     console.warn('Supabase Storage error, usando base64:', uploadError.message);
   }
-  // Fallback: base64
   return imagenADataURL(file);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  VALORES POR DEFECTO
+// ═══════════════════════════════════════════════════════════
+export function defaultPersonaje(): Omit<Personaje, 'id' | 'ultimo_update' | 'conectado'> {
+  return {
+    nombre: '',
+    clase: 'Guerrero',
+    subclase: '',
+    raza: 'Humano',
+    trasfondo: '',
+    alineamiento: 'Neutral',
+    nivel: 1,
+    color_acento: '#8b4513',
+    hp: 10,
+    hp_max: 10,
+    ca: 10,
+    ca_especial: null,
+    velocidad: 30,
+    iniciativa: 0,
+    bonificador_competencia: 2,
+    bonificador_ataque: 0,
+    bonificador_magia: 0,
+    dado_especial: null,
+    estadisticas: {
+      fuerza: 10,
+      destreza: 10,
+      constitucion: 10,
+      inteligencia: 10,
+      sabiduria: 10,
+      carisma: 10,
+    },
+    habilidades: {},
+    salvaciones: {},
+    condiciones_activas: [],
+    retrato_forzado: null,
+    estado_especial: false,
+    nombre_estado_especial: 'ESTADO ESPECIAL',
+    retratos: {},
+    ventajas: [],
+    desventajas: [],
+    rasgos: [],
+    acciones: [],
+    equipo: [],
+    idiomas: [],
+    historia: '',
+    apariencia: '',
+    personalidad: '',
+  };
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -148,34 +195,49 @@ export async function dbCrearPersonaje(
   };
 
   if (isSupabaseConfigured && supabase) {
+    const payload = {
+      id,
+      nombre:                  nuevo.nombre,
+      clase:                   nuevo.clase,
+      subclase:                nuevo.subclase,
+      raza:                    nuevo.raza,
+      trasfondo:               nuevo.trasfondo,
+      alineamiento:            nuevo.alineamiento,
+      nivel:                   nuevo.nivel,
+      color_acento:            nuevo.color_acento,
+      hp:                      nuevo.hp,
+      hp_max:                  nuevo.hp_max,
+      ca:                      nuevo.ca,
+      ca_especial:             nuevo.ca_especial,
+      velocidad:               nuevo.velocidad,
+      iniciativa:              nuevo.iniciativa,
+      bonificador_competencia: nuevo.bonificador_competencia,
+      bonificador_ataque:      nuevo.bonificador_ataque,
+      bonificador_magia:       nuevo.bonificador_magia,
+      dado_especial:           nuevo.dado_especial,
+      estadisticas:            nuevo.estadisticas,
+      habilidades:             nuevo.habilidades,
+      salvaciones:             nuevo.salvaciones,
+      condiciones_activas:     nuevo.condiciones_activas,
+      retrato_forzado:         nuevo.retrato_forzado,
+      estado_especial:         nuevo.estado_especial,
+      nombre_estado_especial:  nuevo.nombre_estado_especial,
+      retratos:                nuevo.retratos,
+      ventajas:                nuevo.ventajas,
+      desventajas:             nuevo.desventajas,
+      rasgos:                  nuevo.rasgos,
+      acciones:                nuevo.acciones,
+      equipo:                  nuevo.equipo,
+      idiomas:                 nuevo.idiomas,
+      historia:                nuevo.historia,
+      apariencia:              nuevo.apariencia,
+      personalidad:            nuevo.personalidad,
+      conectado:               true,
+    };
+
     const { data, error } = await supabase
       .from('personajes')
-      .insert([{
-        id,
-        nombre: nuevo.nombre,
-        clase: nuevo.clase,
-        raza: nuevo.raza,
-        nivel: nuevo.nivel,
-        color_acento: nuevo.color_acento,
-        hp: nuevo.hp,
-        hp_max: nuevo.hp_max,
-        mana: nuevo.mana,
-        mana_max: nuevo.mana_max,
-        estamina: nuevo.estamina,
-        estamina_max: nuevo.estamina_max,
-        estadisticas: nuevo.estadisticas,
-        condiciones_activas: nuevo.condiciones_activas,
-        retrato_forzado: nuevo.retrato_forzado,
-        destello_negro: nuevo.destello_negro,
-        fallo_magico: nuevo.fallo_magico,
-        retratos: nuevo.retratos,
-        ventajas: nuevo.ventajas,
-        desventajas: nuevo.desventajas,
-        acciones: nuevo.acciones,
-        historia: nuevo.historia,
-        apariencia: nuevo.apariencia,
-        conectado: true,
-      }])
+      .insert([payload])
       .select()
       .single();
 
@@ -188,7 +250,6 @@ export async function dbCrearPersonaje(
     console.warn('Supabase INSERT error, guardando en localStorage:', error?.message);
   }
 
-  // Fallback localStorage
   const todos = lsGetAll();
   lsSet([nuevo, ...todos]);
   return nuevo;
@@ -224,7 +285,6 @@ export async function dbActualizarPersonaje(
 }
 
 export async function dbEliminarPersonaje(id: string): Promise<void> {
-  // Eliminar de localStorage
   const todos = lsGetAll().filter(p => p.id !== id);
   lsSet(todos);
 
@@ -239,7 +299,7 @@ export async function dbEliminarPersonaje(id: string): Promise<void> {
 }
 
 // ═══════════════════════════════════════════════════════════
-//  SINCRONIZACIÓN INICIAL (Supabase → localStorage)
+//  SINCRONIZACIÓN INICIAL
 // ═══════════════════════════════════════════════════════════
 export async function sincronizarDesdeSupabase(): Promise<void> {
   if (!isSupabaseConfigured || !supabase) return;
@@ -257,13 +317,12 @@ export async function sincronizarDesdeSupabase(): Promise<void> {
 }
 
 // ═══════════════════════════════════════════════════════════
-//  UTILIDADES HEREDADAS (compatibilidad)
+//  UTILIDADES DE ESTADO
 // ═══════════════════════════════════════════════════════════
 export function derivarEstadoRetrato(personaje: Personaje): string {
   if (personaje.retrato_forzado) return personaje.retrato_forzado;
   if (personaje.hp <= 0) return 'inconsciente';
-  if (personaje.fallo_magico) return 'shock';
-  if (personaje.destello_negro) return 'en_zona';
+  if (personaje.estado_especial) return 'en_zona';
   const criticas = ['ENVENENADO', 'CEGADO', 'QUEMADO', 'ATURDIDO', 'MALDITO', 'PARALIZADO'];
   if (personaje.condiciones_activas.some(c => criticas.includes(c))) return 'afectado';
   if (personaje.hp / personaje.hp_max < 0.4) return 'herido';

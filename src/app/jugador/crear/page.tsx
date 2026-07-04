@@ -3,65 +3,88 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { dbCrearPersonaje, subirRetrato } from '@/lib/db';
-import { AccionPersonaje, EstadisticasBase } from '@/types/character';
-import { CLASES_PERSONAJE, RAZAS_PERSONAJE, COLORES_ACENTO, ICONOS_ACCION } from '@/lib/constants';
+import { dbCrearPersonaje, subirRetrato, defaultPersonaje } from '@/lib/db';
+import { AccionPersonaje, EstadisticasBase, RasgoPersonaje, HabilidadEntrada, formatModificador } from '@/types/character';
+import {
+  CLASES_PERSONAJE, RAZAS_PERSONAJE, COLORES_ACENTO, ALINEAMIENTOS,
+  SUBCLASES_POR_CLASE, HABILIDADES_DND, ATRIBUTOS_BASE, TIPOS_DANIO,
+} from '@/lib/constants';
 import { v4 as uuidv4 } from 'uuid';
 
 const PASOS = [
   { id: 1, titulo: 'IDENTIDAD', desc: 'Nombre, clase y raza' },
-  { id: 2, titulo: 'VITALES', desc: 'HP, Magia y Estamina' },
-  { id: 3, titulo: 'ESTADÍSTICAS', desc: 'Atributos base del radar' },
-  { id: 4, titulo: 'ACCIONES', desc: 'Habilidades y poderes' },
-  { id: 5, titulo: 'RETRATOS', desc: 'Imágenes para cada estado' },
-  { id: 6, titulo: 'LORE', desc: 'Historia y apariencia' },
+  { id: 2, titulo: 'COMBATE',   desc: 'HP, CA y bonificadores' },
+  { id: 3, titulo: 'ATRIBUTOS', desc: 'Los 6 ability scores' },
+  { id: 4, titulo: 'HABILIDADES', desc: 'Competencias y salvaciones' },
+  { id: 5, titulo: 'ACCIONES',  desc: 'Ataques y habilidades' },
+  { id: 6, titulo: 'RASGOS',    desc: 'Rasgos, equipo e idiomas' },
+  { id: 7, titulo: 'RETRATOS',  desc: 'Imágenes para cada estado' },
+  { id: 8, titulo: 'LORE',      desc: 'Historia y apariencia' },
 ];
 
 const ESTADOS_RETRATO = [
-  { key: 'base', label: 'ESTADO BASE', desc: 'Condición normal, HP > 40%', color: '#76ff03' },
-  { key: 'herido', label: 'HERIDO', desc: 'HP por debajo del 40%', color: '#ff1744' },
-  { key: 'afectado', label: 'AFECTADO', desc: 'Bajo condición grave (veneno, ceguera...)', color: '#39ff14' },
+  { key: 'base', label: 'ESTADO BASE', desc: 'Condición normal', color: '#76ff03' },
+  { key: 'herido', label: 'HERIDO', desc: 'HP < 40%', color: '#ff1744' },
+  { key: 'afectado', label: 'AFECTADO', desc: 'Condición grave', color: '#39ff14' },
   { key: 'inconsciente', label: 'INCONSCIENTE', desc: 'HP = 0', color: '#555' },
-  { key: 'en_zona', label: 'EN LA ZONA', desc: 'Destello Negro activado', color: '#ffffff' },
-  { key: 'shock', label: 'SHOCK / FALLO', desc: 'Backfire mágico', color: '#ff6d00' },
+  { key: 'en_zona', label: 'EN LA ZONA', desc: 'Estado especial', color: '#ffffff' },
+  { key: 'shock', label: 'SHOCK', desc: 'Backfire mágico', color: '#ff6d00' },
 ];
 
 export default function CrearPersonajePage() {
   const router = useRouter();
   const [paso, setPaso] = useState(1);
   const [guardando, setGuardando] = useState(false);
-  // Pre-generar ID para que los retratos puedan subirse a Storage antes de crear el personaje
   const [personajeId] = useState<string>(uuidv4);
 
-  // Datos del formulario
+  const def = defaultPersonaje();
+
   const [nombre, setNombre] = useState('');
-  const [clase, setClase] = useState(CLASES_PERSONAJE[0]);
-  const [clasePersonalizada, setClasePersonalizada] = useState('');
-  const [raza, setRaza] = useState(RAZAS_PERSONAJE[0]);
-  const [razaPersonalizada, setRazaPersonalizada] = useState('');
+  const [clase, setClase] = useState(def.clase);
+  const [subclase, setSubclase] = useState('');
+  const [raza, setRaza] = useState(def.raza);
+  const [trasfondo, setTrasfondo] = useState('');
+  const [alineamiento, setAlineamiento] = useState('');
   const [nivel, setNivel] = useState(1);
   const [colorAcento, setColorAcento] = useState(COLORES_ACENTO[0]);
+
+  const [hpMax, setHpMax] = useState(10);
+  const [ca, setCa] = useState(10);
+  const [caEspecial, setCaEspecial] = useState<number | null>(null);
+  const [velocidad, setVelocidad] = useState(30);
+  const [iniciativa, setIniciativa] = useState(0);
+  const [bonComp, setBonComp] = useState(2);
+  const [bonAtk, setBonAtk] = useState(0);
+  const [bonMag, setBonMag] = useState(0);
+  const [dadoEspecial, setDadoEspecial] = useState('');
+  const [nombreEstadoEspecial, setNombreEstadoEspecial] = useState('ESTADO ESPECIAL');
+
+  const [stats, setStats] = useState<EstadisticasBase>({
+    fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, sabiduria: 10, carisma: 10,
+  });
   const [ventajas, setVentajas] = useState('');
   const [desventajas, setDesventajas] = useState('');
 
-  const [hpMax, setHpMax] = useState(100);
-  const [manaMax, setManaMax] = useState(100);
-  const [estaminaMax, setEstaminaMax] = useState(100);
-
-  const [stats, setStats] = useState<EstadisticasBase>({
-    COMBATE: 50, VIGOR: 50, MOVILIDAD: 50, CARISMA: 50, INTELECTO: 50
-  });
+  const [habilidades, setHabilidades] = useState<Record<string, HabilidadEntrada>>({});
+  const [salvaciones, setSalvaciones] = useState<Record<string, number>>({});
 
   const [acciones, setAcciones] = useState<AccionPersonaje[]>([]);
+  const [rasgos, setRasgos] = useState<RasgoPersonaje[]>([]);
+  const [equipo, setEquipo] = useState('');
+  const [idiomas, setIdiomas] = useState('');
+
   const [retratos, setRetratos] = useState<Partial<Record<string, string>>>({});
   const [cargandoRetrato, setCargandoRetrato] = useState<string | null>(null);
 
   const [historia, setHistoria] = useState('');
   const [apariencia, setApariencia] = useState('');
+  const [personalidad, setPersonalidad] = useState('');
+
+  const subclases = SUBCLASES_POR_CLASE[clase] ?? [];
 
   const puedeAvanzar = () => {
     if (paso === 1) return nombre.trim().length >= 2;
-    if (paso === 2) return hpMax > 0 && manaMax > 0 && estaminaMax > 0;
+    if (paso === 2) return hpMax > 0;
     return true;
   };
 
@@ -69,7 +92,6 @@ export default function CrearPersonajePage() {
     if (!file.type.startsWith('image/')) return;
     setCargandoRetrato(estadoKey);
     try {
-      // subirRetrato usa Supabase Storage si está configurado, si no convierte a base64
       const url = await subirRetrato(personajeId, estadoKey, file);
       setRetratos(prev => ({ ...prev, [estadoKey]: url }));
     } finally {
@@ -77,56 +99,45 @@ export default function CrearPersonajePage() {
     }
   };
 
-  const agregarAccion = () => {
-    setAcciones(prev => [...prev, {
-      id: uuidv4(),
-      nombre: '',
-      descripcion: '',
-      tipo: 'ataque',
-      icono: 'Sword',
-      danio: '',
-      cooldown: '',
-    }]);
-  };
-
-  const actualizarAccion = (id: string, campo: keyof AccionPersonaje, valor: string) => {
-    setAcciones(prev => prev.map(a => a.id === id ? { ...a, [campo]: valor } : a));
-  };
-
-  const eliminarAccion = (id: string) => {
-    setAcciones(prev => prev.filter(a => a.id !== id));
-  };
-
   const handleGuardar = async () => {
     setGuardando(true);
     try {
-      const claseReal = clase === '__custom' ? clasePersonalizada : clase;
-      const razaReal = raza === '__custom' ? razaPersonalizada : raza;
-
-      // dbCrearPersonaje guarda en Supabase + localStorage
       const nuevo = await dbCrearPersonaje({
         nombre: nombre.trim(),
-        clase: claseReal,
-        raza: razaReal,
+        clase,
+        subclase,
+        raza,
+        trasfondo,
+        alineamiento,
         nivel,
         color_acento: colorAcento,
         hp: hpMax,
         hp_max: hpMax,
-        mana: manaMax,
-        mana_max: manaMax,
-        estamina: estaminaMax,
-        estamina_max: estaminaMax,
+        ca,
+        ca_especial: caEspecial,
+        velocidad,
+        iniciativa,
+        bonificador_competencia: bonComp,
+        bonificador_ataque: bonAtk,
+        bonificador_magia: bonMag,
+        dado_especial: dadoEspecial || null,
         estadisticas: stats,
+        habilidades,
+        salvaciones,
         condiciones_activas: [],
         retrato_forzado: null,
-        destello_negro: false,
-        fallo_magico: false,
+        estado_especial: false,
+        nombre_estado_especial: nombreEstadoEspecial,
         retratos: retratos as Record<string, string>,
         ventajas: ventajas.split('\n').map(s => s.trim()).filter(Boolean),
         desventajas: desventajas.split('\n').map(s => s.trim()).filter(Boolean),
+        rasgos: rasgos.filter(r => r.nombre.trim()),
         acciones: acciones.filter(a => a.nombre.trim()),
+        equipo: equipo.split('\n').map(s => s.trim()).filter(Boolean),
+        idiomas: idiomas.split('\n').map(s => s.trim()).filter(Boolean),
         historia: historia.trim(),
         apariencia: apariencia.trim(),
+        personalidad: personalidad.trim(),
       }, personajeId);
       router.push(`/jugador/${nuevo.id}`);
     } finally {
@@ -135,27 +146,27 @@ export default function CrearPersonajePage() {
   };
 
   return (
-    <div className="bg-hud min-h-screen flex flex-col">
+    <div className="bg-dungeon min-h-screen flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b"
-        style={{ borderColor: '#2a3548', background: 'rgba(13,17,23,0.95)' }}>
+        style={{ borderColor: '#1c1712', background: 'rgba(6,4,2,0.95)' }}>
         <button onClick={() => router.push('/jugador')} className="flex items-center gap-2 hud-label hover:opacity-70 transition-opacity cursor-pointer"
-          style={{ color: '#4a607d' }}>
+          style={{ color: '#5a4e40' }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M19 12H5M12 5l-7 7 7 7"/>
           </svg>
           Volver
         </button>
-        <span className="font-heading text-lg font-bold" style={{ color: '#ff1744' }}>
-          CREACIÓN DE PERSONAJE
+        <span className="font-heading text-lg font-bold" style={{ color: '#9a7020', letterSpacing: '0.1em' }}>
+          FORJA DE PERSONAJE
         </span>
-        <div className="hud-label" style={{ color: '#4a607d' }}>
+        <div className="hud-label" style={{ color: '#5a4e40' }}>
           PASO {paso} DE {PASOS.length}
         </div>
       </div>
 
       {/* Indicador de pasos */}
-      <div className="flex border-b" style={{ borderColor: '#2a3548', background: 'rgba(13,17,23,0.5)' }}>
+      <div className="flex border-b overflow-x-auto" style={{ borderColor: '#1c1712', background: 'rgba(6,4,2,0.5)' }}>
         {PASOS.map(p => (
           <button
             key={p.id}
@@ -163,13 +174,13 @@ export default function CrearPersonajePage() {
             className="flex-1 py-3 px-2 text-center transition-all"
             style={{
               cursor: p.id <= paso ? 'pointer' : 'not-allowed',
-              background: paso === p.id ? 'rgba(255,23,68,0.08)' : 'transparent',
-              borderBottom: `2px solid ${paso === p.id ? '#ff1744' : p.id < paso ? '#2a3548' : 'transparent'}`,
+              background: paso === p.id ? `${colorAcento}10` : 'transparent',
+              borderBottom: `2px solid ${paso === p.id ? colorAcento : p.id < paso ? '#3d3028' : 'transparent'}`,
             }}
           >
             <div className="hud-label" style={{
-              color: paso === p.id ? '#ff1744' : p.id < paso ? '#8fa8c8' : '#3d5270',
-              fontSize: '9px'
+              color: paso === p.id ? colorAcento : p.id < paso ? '#7a6e60' : '#3d3028',
+              fontSize: '8px'
             }}>
               {p.titulo}
             </div>
@@ -178,7 +189,7 @@ export default function CrearPersonajePage() {
       </div>
 
       {/* Contenido */}
-      <div className="flex-1 flex items-start justify-center py-10 px-4">
+      <div className="flex-1 flex items-start justify-center py-10 px-4 overflow-y-auto">
         <AnimatePresence mode="wait">
           <motion.div
             key={paso}
@@ -191,258 +202,375 @@ export default function CrearPersonajePage() {
             {/* PASO 1: IDENTIDAD */}
             {paso === 1 && (
               <div className="space-y-6">
-                <div>
-                  <label className="hud-label block mb-2" style={{ color: '#8fa8c8' }}>NOMBRE DEL PERSONAJE *</label>
-                  <input
-                    type="text"
-                    value={nombre}
-                    onChange={e => setNombre(e.target.value)}
-                    placeholder="Ej: Vorkan el Oscuro"
-                    className="hud-input w-full px-4 py-3 rounded-sm text-lg"
-                    maxLength={50}
-                    autoFocus
-                  />
-                </div>
-
+                <Campo label="NOMBRE DEL PERSONAJE *">
+                  <input type="text" value={nombre} onChange={e => setNombre(e.target.value)}
+                    placeholder="Ej: La Masa" className="hud-input w-full px-4 py-3 rounded-sm text-lg" maxLength={50} autoFocus />
+                </Campo>
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="hud-label block mb-2" style={{ color: '#8fa8c8' }}>CLASE</label>
-                    <select
-                      value={clase}
-                      onChange={e => setClase(e.target.value)}
-                      className="hud-select w-full px-3 py-3 rounded-sm"
-                    >
-                      {CLASES_PERSONAJE.map(c => <option key={c} value={c}>{c}</option>)}
-                      <option value="__custom">Personalizada...</option>
-                    </select>
-                    {clase === '__custom' && (
-                      <input type="text" value={clasePersonalizada}
-                        onChange={e => setClasePersonalizada(e.target.value)}
-                        placeholder="Nombre de la clase"
-                        className="hud-input w-full px-3 py-2 rounded-sm mt-2" />
-                    )}
-                  </div>
-                  <div>
-                    <label className="hud-label block mb-2" style={{ color: '#8fa8c8' }}>RAZA</label>
-                    <select
-                      value={raza}
-                      onChange={e => setRaza(e.target.value)}
-                      className="hud-select w-full px-3 py-3 rounded-sm"
-                    >
-                      {RAZAS_PERSONAJE.map(r => <option key={r} value={r}>{r}</option>)}
-                      <option value="__custom">Personalizada...</option>
-                    </select>
-                    {raza === '__custom' && (
-                      <input type="text" value={razaPersonalizada}
-                        onChange={e => setRazaPersonalizada(e.target.value)}
-                        placeholder="Nombre de la raza"
-                        className="hud-input w-full px-3 py-2 rounded-sm mt-2" />
-                    )}
-                  </div>
+                  <Campo label="CLASE">
+                    <input type="text" value={clase} onChange={e => setClase(e.target.value)}
+                      list="cls-list" className="hud-input w-full px-3 py-3 rounded-sm" />
+                    <datalist id="cls-list">
+                      {CLASES_PERSONAJE.map(c => <option key={c} value={c} />)}
+                    </datalist>
+                  </Campo>
+                  <Campo label="SUBCLASE">
+                    <input type="text" value={subclase} onChange={e => setSubclase(e.target.value)}
+                      list="sub-list" placeholder="Ej: Ladrón, Eldritch Knight..."
+                      className="hud-input w-full px-3 py-3 rounded-sm" />
+                    <datalist id="sub-list">
+                      {subclases.map(s => <option key={s} value={s} />)}
+                    </datalist>
+                  </Campo>
                 </div>
-
-                <div>
-                  <label className="hud-label block mb-2" style={{ color: '#8fa8c8' }}>NIVEL</label>
+                <div className="grid grid-cols-2 gap-4">
+                  <Campo label="RAZA">
+                    <input type="text" value={raza} onChange={e => setRaza(e.target.value)}
+                      list="raz-list" className="hud-input w-full px-3 py-3 rounded-sm" />
+                    <datalist id="raz-list">
+                      {RAZAS_PERSONAJE.map(r => <option key={r} value={r} />)}
+                    </datalist>
+                  </Campo>
+                  <Campo label="ALINEAMIENTO">
+                    <select value={alineamiento} onChange={e => setAlineamiento(e.target.value)}
+                      className="hud-select w-full px-3 py-3 rounded-sm">
+                      <option value="">Sin definir</option>
+                      {ALINEAMIENTOS.map(a => <option key={a} value={a}>{a}</option>)}
+                    </select>
+                  </Campo>
+                </div>
+                <Campo label="TRASFONDO">
+                  <input type="text" value={trasfondo} onChange={e => setTrasfondo(e.target.value)}
+                    placeholder="Ej: Coraya Alquímica, Criminal..."
+                    className="hud-input w-full px-3 py-3 rounded-sm" />
+                </Campo>
+                <Campo label="NIVEL">
                   <div className="flex items-center gap-4">
-                    <input
-                      type="range" min={1} max={20} value={nivel}
-                      onChange={e => setNivel(Number(e.target.value))}
-                      className="flex-1"
-                    />
-                    <span className="font-hud text-2xl font-bold w-10 text-center" style={{ color: '#ff1744' }}>{nivel}</span>
+                    <input type="range" min={1} max={20} value={nivel} onChange={e => setNivel(Number(e.target.value))} className="flex-1" />
+                    <span className="font-heading text-2xl font-bold" style={{ color: colorAcento }}>{nivel}</span>
                   </div>
-                </div>
-
-                <div>
-                  <label className="hud-label block mb-3" style={{ color: '#8fa8c8' }}>COLOR DE ACENTO</label>
+                </Campo>
+                <Campo label="COLOR DE ACENTO">
                   <div className="flex flex-wrap gap-3">
                     {COLORES_ACENTO.map(c => (
-                      <button
-                        key={c}
-                        onClick={() => setColorAcento(c)}
+                      <button key={c} onClick={() => setColorAcento(c)}
                         className="w-8 h-8 rounded-sm cursor-pointer transition-transform hover:scale-110"
                         style={{
                           background: c,
-                          boxShadow: colorAcento === c ? `0 0 12px ${c}, 0 0 4px ${c}` : 'none',
-                          border: colorAcento === c ? `2px solid white` : '2px solid transparent',
-                        }}
-                      />
+                          boxShadow: colorAcento === c ? `0 0 12px ${c}` : 'none',
+                          border: colorAcento === c ? '2px solid white' : '2px solid transparent',
+                        }} />
                     ))}
-                    <input
-                      type="color"
-                      value={colorAcento}
-                      onChange={e => setColorAcento(e.target.value)}
-                      className="w-8 h-8 rounded-sm cursor-pointer"
-                      title="Color personalizado"
-                    />
+                    <input type="color" value={colorAcento} onChange={e => setColorAcento(e.target.value)}
+                      className="w-8 h-8 rounded-sm cursor-pointer" />
                   </div>
-                </div>
+                </Campo>
               </div>
             )}
 
-            {/* PASO 2: VITALES */}
+            {/* PASO 2: COMBATE */}
             {paso === 2 && (
-              <div className="space-y-8">
-                <VitalCreator
-                  label="SALUD MÁXIMA (HP)"
-                  value={hpMax}
-                  color="#ff1744"
-                  onChange={setHpMax}
-                  desc="Puntos de golpe máximos. Cuánto daño puede aguantar tu personaje."
-                />
-                <VitalCreator
-                  label="MAGIA MÁXIMA (MANA)"
-                  value={manaMax}
-                  color="#00b0ff"
-                  onChange={setManaMax}
-                  desc="Reserva de energía mágica para lanzar hechizos."
-                />
-                <VitalCreator
-                  label="ESTAMINA MÁXIMA"
-                  value={estaminaMax}
-                  color="#76ff03"
-                  onChange={setEstaminaMax}
-                  desc="Energía física para maniobras y ataques especiales."
-                />
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <CampoNum label="PUNTOS DE GOLPE (HP)" value={hpMax} onChange={setHpMax} color="#8b2020" min={1} />
+                  <CampoNum label="CLASE DE ARMADURA (CA)" value={ca} onChange={setCa} color="#7a5818" min={1} />
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <CampoNum label="VELOCIDAD (pies)" value={velocidad} onChange={setVelocidad} color="#3a4870" step={5} />
+                  <CampoNum label="INICIATIVA" value={iniciativa} onChange={setIniciativa} color="#344020" />
+                  <CampoNum label="BON. COMPETENCIA" value={bonComp} onChange={setBonComp} color="#7a5818" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <CampoNum label="BON. ATAQUE" value={bonAtk} onChange={setBonAtk} color="#6b1818" />
+                  <CampoNum label="BON. MAGIA" value={bonMag} onChange={setBonMag} color="#3a4870" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <Campo label="CA EN ESTADO ESPECIAL (opcional)">
+                    <input type="number" value={caEspecial ?? ''}
+                      onChange={e => setCaEspecial(e.target.value ? Number(e.target.value) : null)}
+                      placeholder="Ej: 16"
+                      className="hud-input w-full px-3 py-3 rounded-sm font-heading text-center" style={{ color: '#7a5818' }} />
+                  </Campo>
+                  <Campo label="DADO ESPECIAL (opcional)">
+                    <input type="text" value={dadoEspecial} onChange={e => setDadoEspecial(e.target.value)}
+                      placeholder="Ej: 2d6 (ataque furtivo)"
+                      className="hud-input w-full px-3 py-3 rounded-sm" />
+                  </Campo>
+                </div>
+                <Campo label="NOMBRE DEL ESTADO ESPECIAL">
+                  <input type="text" value={nombreEstadoEspecial} onChange={e => setNombreEstadoEspecial(e.target.value)}
+                    placeholder="Ej: ESTADO ENOJADO, ECO ARCANO..."
+                    className="hud-input w-full px-3 py-3 rounded-sm" />
+                </Campo>
               </div>
             )}
 
-            {/* PASO 3: ESTADÍSTICAS */}
+            {/* PASO 3: ATRIBUTOS */}
             {paso === 3 && (
               <div className="space-y-6">
-                <p className="font-sans text-sm" style={{ color: '#7a8a9a' }}>
-                  Define los 5 atributos base que aparecerán en el radar del HUD. Valor de 0 a 100.
+                <p className="font-lore text-sm" style={{ color: '#7a6e60' }}>
+                  Los 6 atributos base de D&D 5e. Valores entre 1 y 30.
                 </p>
-                {(Object.keys(stats) as (keyof EstadisticasBase)[]).map(stat => (
-                  <div key={stat}>
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="hud-label" style={{ color: '#8fa8c8' }}>{stat}</label>
-                      <span className="font-hud text-lg font-bold" style={{ color: colorAcento }}>{stats[stat]}</span>
-                    </div>
-                    <input
-                      type="range" min={0} max={100} value={stats[stat]}
-                      onChange={e => setStats(prev => ({ ...prev, [stat]: Number(e.target.value) }))}
-                      className="w-full"
-                    />
-                    <div className="glow-bar-track h-2 mt-1">
-                      <div className="glow-bar-fill h-full"
-                        style={{ width: `${stats[stat]}%`, background: colorAcento, boxShadow: `0 0 6px ${colorAcento}` }} />
-                    </div>
-                  </div>
-                ))}
+                <div className="grid grid-cols-2 gap-4">
+                  {ATRIBUTOS_BASE.map(attr => {
+                    const val = stats[attr.key as keyof EstadisticasBase];
+                    const mod = formatModificador(val);
+                    return (
+                      <div key={attr.key} className="p-4 rounded-sm"
+                        style={{ background: `${attr.color}08`, border: `1px solid ${attr.color}30` }}>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="hud-label" style={{ color: attr.color }}>{attr.label.toUpperCase()}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-heading text-xl font-bold" style={{ color: attr.color }}>{val}</span>
+                            <span className="font-heading text-sm" style={{ color: `${attr.color}99` }}>({mod})</span>
+                          </div>
+                        </div>
+                        <input type="range" min={1} max={30} value={val}
+                          onChange={e => setStats(prev => ({ ...prev, [attr.key]: Number(e.target.value) }))}
+                          className="w-full" />
+                        <input type="number" min={1} max={30} value={val}
+                          onChange={e => setStats(prev => ({ ...prev, [attr.key]: Number(e.target.value) }))}
+                          className="hud-input w-full px-2 py-1 mt-2 rounded-sm font-heading text-center"
+                          style={{ color: attr.color, fontSize: '14px' }} />
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <Campo label="VENTAJAS (una por línea)">
+                    <textarea value={ventajas} onChange={e => setVentajas(e.target.value)}
+                      placeholder="Ej: Resistencia al veneno" className="hud-input w-full px-3 py-2 rounded-sm resize-none" rows={4} />
+                  </Campo>
+                  <Campo label="DESVENTAJAS (una por línea)">
+                    <textarea value={desventajas} onChange={e => setDesventajas(e.target.value)}
+                      placeholder="Ej: Miedo a la oscuridad" className="hud-input w-full px-3 py-2 rounded-sm resize-none" rows={4} />
+                  </Campo>
+                </div>
+              </div>
+            )}
 
-                <div className="grid grid-cols-2 gap-4 pt-4">
-                  <div>
-                    <label className="hud-label block mb-2" style={{ color: '#8fa8c8' }}>VENTAJAS (una por línea)</label>
-                    <textarea
-                      value={ventajas}
-                      onChange={e => setVentajas(e.target.value)}
-                      placeholder="Ej: Resistencia al veneno&#10;Visión en la oscuridad"
-                      className="hud-input w-full px-3 py-2 rounded-sm resize-none"
-                      rows={4}
-                    />
-                  </div>
-                  <div>
-                    <label className="hud-label block mb-2" style={{ color: '#8fa8c8' }}>DESVENTAJAS (una por línea)</label>
-                    <textarea
-                      value={desventajas}
-                      onChange={e => setDesventajas(e.target.value)}
-                      placeholder="Ej: Alergia a la plata&#10;Miedo a la oscuridad"
-                      className="hud-input w-full px-3 py-2 rounded-sm resize-none"
-                      rows={4}
-                    />
+            {/* PASO 4: HABILIDADES */}
+            {paso === 4 && (
+              <div className="space-y-4">
+                <p className="font-lore text-sm" style={{ color: '#7a6e60' }}>
+                  Marca las habilidades competentes. Ajusta el bonificador y marca como Experto si aplica.
+                </p>
+                {HABILIDADES_DND.map(hab => {
+                  const activa = !!habilidades[hab.nombre];
+                  const entrada = habilidades[hab.nombre];
+                  return (
+                    <div key={hab.nombre} className="flex items-center gap-3 p-2 rounded-sm"
+                      style={{
+                        background: activa ? `${colorAcento}08` : 'transparent',
+                        border: `1px solid ${activa ? `${colorAcento}40` : '#2e2820'}`,
+                      }}>
+                      <button onClick={() => {
+                        const h = { ...habilidades };
+                        if (h[hab.nombre]) delete h[hab.nombre];
+                        else h[hab.nombre] = { bonus: 0, experto: false };
+                        setHabilidades(h);
+                      }}
+                        className="w-5 h-5 rounded-sm flex-shrink-0 flex items-center justify-center cursor-pointer"
+                        style={{
+                          background: activa ? colorAcento : 'transparent',
+                          border: `1px solid ${activa ? colorAcento : '#5a4e40'}`,
+                          color: '#fff', fontSize: '10px',
+                        }}>
+                        {activa ? '✓' : ''}
+                      </button>
+                      <span className="font-lore text-sm flex-1" style={{ color: activa ? '#b8a070' : '#5a4e40' }}>
+                        {hab.nombre}
+                      </span>
+                      <span className="hud-label" style={{ color: '#5a4e40', fontSize: '8px' }}>({hab.atributo})</span>
+                      {activa && (
+                        <>
+                          <input type="number" value={entrada?.bonus ?? 0}
+                            onChange={e => setHabilidades(prev => ({
+                              ...prev, [hab.nombre]: { ...prev[hab.nombre], bonus: Number(e.target.value) }
+                            }))}
+                            className="hud-input w-14 px-1 py-1 rounded-sm font-heading text-center"
+                            style={{ color: colorAcento, fontSize: '12px' }} />
+                          <button onClick={() => setHabilidades(prev => ({
+                            ...prev, [hab.nombre]: { ...prev[hab.nombre], experto: !prev[hab.nombre].experto }
+                          }))}
+                            className="px-2 py-1 rounded-sm hud-label cursor-pointer"
+                            style={{
+                              background: entrada?.experto ? `${colorAcento}20` : 'transparent',
+                              border: `1px solid ${entrada?.experto ? colorAcento : '#3d3028'}`,
+                              color: entrada?.experto ? colorAcento : '#5a4e40',
+                              fontSize: '8px',
+                            }}>
+                            EXP
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
+
+                <div className="mt-6">
+                  <p className="hud-label mb-3" style={{ color: '#7a6e60' }}>SALVACIONES</p>
+                  <div className="grid grid-cols-3 gap-3">
+                    {ATRIBUTOS_BASE.map(attr => {
+                      const tiene = salvaciones[attr.label] !== undefined;
+                      return (
+                        <div key={attr.key} className="flex items-center gap-2 p-2 rounded-sm"
+                          style={{ border: `1px solid ${tiene ? `${attr.color}60` : '#2e2820'}` }}>
+                          <button onClick={() => {
+                            const n = { ...salvaciones };
+                            if (tiene) delete n[attr.label]; else n[attr.label] = 0;
+                            setSalvaciones(n);
+                          }}
+                            className="w-4 h-4 rounded-sm flex-shrink-0 flex items-center justify-center cursor-pointer"
+                            style={{
+                              background: tiene ? attr.color : 'transparent',
+                              border: `1px solid ${tiene ? attr.color : '#5a4e40'}`,
+                              color: '#fff', fontSize: '8px',
+                            }}>
+                            {tiene ? '✓' : ''}
+                          </button>
+                          <span className="hud-label flex-1" style={{ color: tiene ? attr.color : '#5a4e40', fontSize: '9px' }}>
+                            {attr.abr}
+                          </span>
+                          {tiene && (
+                            <input type="number" value={salvaciones[attr.label] ?? 0}
+                              onChange={e => setSalvaciones(prev => ({ ...prev, [attr.label]: Number(e.target.value) }))}
+                              className="hud-input w-12 px-1 py-0.5 rounded-sm font-heading text-center"
+                              style={{ color: attr.color, fontSize: '11px' }} />
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
             )}
 
-            {/* PASO 4: ACCIONES */}
-            {paso === 4 && (
+            {/* PASO 5: ACCIONES */}
+            {paso === 5 && (
               <div className="space-y-4">
-                <p className="font-sans text-sm" style={{ color: '#7a8a9a' }}>
-                  Añade hasta 6 acciones personalizadas que aparecerán como cartas en tu HUD.
+                <p className="font-lore text-sm" style={{ color: '#7a6e60' }}>
+                  Añade ataques, hechizos y habilidades. Marca en qué estado están disponibles.
                 </p>
                 {acciones.map((accion, i) => (
-                  <AccionEditor
-                    key={accion.id}
-                    accion={accion}
-                    index={i}
-                    colorAcento={colorAcento}
-                    onChange={actualizarAccion}
-                    onDelete={eliminarAccion}
-                  />
+                  <AccionEditor key={accion.id} accion={accion} index={i} colorAcento={colorAcento}
+                    onChange={(id, campo, val) => setAcciones(prev => prev.map(a => a.id === id ? { ...a, [campo]: val } : a))}
+                    onDelete={id => setAcciones(prev => prev.filter(a => a.id !== id))} />
                 ))}
-                {acciones.length < 6 && (
-                  <button
-                    onClick={agregarAccion}
-                    className="w-full py-3 rounded-sm cursor-pointer transition-all"
-                    style={{
-                      background: 'rgba(0,229,255,0.03)',
-                      border: '1px dashed rgba(0,229,255,0.3)',
-                      color: '#00e5ff',
-                      fontFamily: 'Orbitron, monospace',
-                      fontSize: '12px',
-                    }}
-                  >
-                    + AGREGAR ACCIÓN
-                  </button>
-                )}
-                {acciones.length === 0 && (
-                  <p className="text-center text-sm py-4" style={{ color: '#3d5270' }}>
-                    Sin acciones. Puedes saltar este paso o agregarlas después.
-                  </p>
-                )}
+                <button onClick={() => setAcciones(prev => [...prev, {
+                  id: uuidv4(), nombre: '', descripcion: '', tipo: 'ataque', icono: 'Sword',
+                  estado: 'normal', tirada_impactar: '', alcance: '5 pies', danio: '', tipo_danio: '', cooldown: '',
+                }])}
+                  className="w-full py-3 rounded-sm cursor-pointer transition-all"
+                  style={{ background: `${colorAcento}06`, border: `1px dashed ${colorAcento}40`, color: colorAcento, fontFamily: 'Cinzel, serif', fontSize: '12px' }}>
+                  + AGREGAR ACCIÓN
+                </button>
               </div>
             )}
 
-            {/* PASO 5: RETRATOS */}
-            {paso === 5 && (
+            {/* PASO 6: RASGOS */}
+            {paso === 6 && (
               <div className="space-y-4">
-                <p className="font-sans text-sm" style={{ color: '#7a8a9a' }}>
-                  Sube imágenes para cada estado de tu personaje. Mínimo el retrato base. Los demás son opcionales — si no los tienes, se usará el estado base.
+                <p className="font-lore text-sm" style={{ color: '#7a6e60' }}>
+                  Rasgos raciales, de clase, únicos, etc.
+                </p>
+                {rasgos.map((rasgo, i) => (
+                  <div key={rasgo.id} className="p-4 rounded-sm" style={{ background: 'rgba(12,10,7,0.8)', border: '1px solid #2e2820' }}>
+                    <div className="flex justify-between mb-3">
+                      <span className="hud-label" style={{ color: colorAcento }}>RASGO {i + 1}</span>
+                      <button onClick={() => setRasgos(prev => prev.filter(r => r.id !== rasgo.id))}
+                        className="hud-label cursor-pointer hover:opacity-70" style={{ color: '#8b2020' }}>✕</button>
+                    </div>
+                    <input type="text" value={rasgo.nombre}
+                      onChange={e => setRasgos(prev => prev.map(r => r.id === rasgo.id ? { ...r, nombre: e.target.value } : r))}
+                      placeholder="Nombre del rasgo" className="hud-input w-full px-3 py-2 rounded-sm text-sm mb-2" />
+                    <textarea value={rasgo.descripcion}
+                      onChange={e => setRasgos(prev => prev.map(r => r.id === rasgo.id ? { ...r, descripcion: e.target.value } : r))}
+                      placeholder="Descripción" className="hud-input w-full px-3 py-2 rounded-sm text-sm resize-none" rows={3} />
+                  </div>
+                ))}
+                <button onClick={() => setRasgos(prev => [...prev, { id: uuidv4(), nombre: '', descripcion: '' }])}
+                  className="w-full py-3 rounded-sm cursor-pointer transition-all"
+                  style={{ background: `${colorAcento}06`, border: `1px dashed ${colorAcento}40`, color: colorAcento, fontFamily: 'Cinzel, serif', fontSize: '12px' }}>
+                  + AGREGAR RASGO
+                </button>
+                <div className="grid grid-cols-2 gap-4 pt-4">
+                  <Campo label="EQUIPO (uno por línea)">
+                    <textarea value={equipo} onChange={e => setEquipo(e.target.value)}
+                      placeholder="Espada larga&#10;Escudo&#10;Cota de mallas"
+                      className="hud-input w-full px-3 py-2 rounded-sm resize-none text-sm" rows={6} />
+                  </Campo>
+                  <Campo label="IDIOMAS (uno por línea)">
+                    <textarea value={idiomas} onChange={e => setIdiomas(e.target.value)}
+                      placeholder="Común&#10;Élfico"
+                      className="hud-input w-full px-3 py-2 rounded-sm resize-none text-sm" rows={6} />
+                  </Campo>
+                </div>
+              </div>
+            )}
+
+            {/* PASO 7: RETRATOS */}
+            {paso === 7 && (
+              <div className="space-y-4">
+                <p className="font-lore text-sm" style={{ color: '#7a6e60' }}>
+                  Sube imágenes para cada estado. Mínimo el retrato base.
                 </p>
                 <div className="grid grid-cols-2 gap-4">
                   {ESTADOS_RETRATO.map(estado => (
-                    <RetratoUploader
-                      key={estado.key}
-                      estadoKey={estado.key}
-                      label={estado.label}
-                      desc={estado.desc}
-                      color={estado.color}
-                      imagen={retratos[estado.key]}
-                      cargando={cargandoRetrato === estado.key}
-                      onSubir={handleSubirRetrato}
-                    />
+                    <div key={estado.key} className="rounded-sm overflow-hidden" style={{ border: `1px solid ${estado.color}30` }}>
+                      <div className="relative h-40" style={{ background: 'rgba(12,10,7,0.8)' }}>
+                        {retratos[estado.key] ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={retratos[estado.key]} alt={estado.label} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            {cargandoRetrato === estado.key ? (
+                              <div className="animate-spin w-8 h-8 border-2 rounded-full"
+                                style={{ borderColor: `${estado.color}40`, borderTopColor: estado.color }} />
+                            ) : (
+                              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={estado.color} strokeWidth="1" opacity={0.3}>
+                                <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21,15 16,10 5,21"/>
+                              </svg>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <label className="block p-2 cursor-pointer hover:opacity-80 transition-opacity" style={{ background: `${estado.color}08` }}>
+                        <input type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (f) handleSubirRetrato(estado.key, f); }} className="hidden" />
+                        <div className="hud-label" style={{ color: estado.color, fontSize: '9px' }}>{estado.label}</div>
+                        <div className="text-xs mt-0.5" style={{ color: '#5a4e40' }}>{estado.desc}</div>
+                        <div className="mt-2 hud-label text-center py-1 rounded-sm"
+                          style={{ background: `${estado.color}10`, border: `1px solid ${estado.color}30`, color: estado.color, fontSize: '9px' }}>
+                          {retratos[estado.key] ? 'CAMBIAR' : 'SUBIR'}
+                        </div>
+                      </label>
+                    </div>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* PASO 6: LORE */}
-            {paso === 6 && (
+            {/* PASO 8: LORE */}
+            {paso === 8 && (
               <div className="space-y-6">
-                <div>
-                  <label className="hud-label block mb-2" style={{ color: '#8fa8c8' }}>HISTORIA DEL PERSONAJE</label>
-                  <textarea
-                    value={historia}
-                    onChange={e => setHistoria(e.target.value)}
-                    placeholder="¿Cuáles son sus orígenes? ¿Qué le trajo aquí? ¿Cuáles son sus motivaciones?"
-                    className="hud-input w-full px-4 py-3 rounded-sm resize-none lore-box"
-                    rows={8}
-                    style={{ fontFamily: 'Rajdhani, sans-serif', fontSize: '14px', color: '#b8a070' }}
-                  />
-                </div>
-                <div>
-                  <label className="hud-label block mb-2" style={{ color: '#8fa8c8' }}>DESCRIPCIÓN FÍSICA</label>
-                  <textarea
-                    value={apariencia}
-                    onChange={e => setApariencia(e.target.value)}
-                    placeholder="¿Cómo luce tu personaje? Describe su apariencia física, vestimenta y rasgos distintivos."
-                    className="hud-input w-full px-4 py-3 rounded-sm resize-none lore-box"
-                    rows={5}
-                    style={{ fontFamily: 'Rajdhani, sans-serif', fontSize: '14px', color: '#b8a070' }}
-                  />
-                </div>
+                <Campo label="HISTORIA DEL PERSONAJE">
+                  <textarea value={historia} onChange={e => setHistoria(e.target.value)}
+                    placeholder="¿Cuáles son sus orígenes? ¿Qué le trajo aquí?"
+                    className="hud-input w-full px-4 py-3 rounded-sm resize-none lore-box" rows={8}
+                    style={{ fontFamily: 'Crimson Pro, serif', fontSize: '14px', color: '#b8a070' }} />
+                </Campo>
+                <Campo label="DESCRIPCIÓN FÍSICA">
+                  <textarea value={apariencia} onChange={e => setApariencia(e.target.value)}
+                    placeholder="¿Cómo luce tu personaje?"
+                    className="hud-input w-full px-4 py-3 rounded-sm resize-none lore-box" rows={5}
+                    style={{ fontFamily: 'Crimson Pro, serif', fontSize: '14px', color: '#b8a070' }} />
+                </Campo>
+                <Campo label="PERSONALIDAD / IDEALES / VÍNCULOS / DEFECTOS">
+                  <textarea value={personalidad} onChange={e => setPersonalidad(e.target.value)}
+                    placeholder="Ideales, vínculos, defectos..."
+                    className="hud-input w-full px-4 py-3 rounded-sm resize-none lore-box" rows={5}
+                    style={{ fontFamily: 'Crimson Pro, serif', fontSize: '14px', color: '#b8a070' }} />
+                </Campo>
               </div>
             )}
           </motion.div>
@@ -451,42 +579,28 @@ export default function CrearPersonajePage() {
 
       {/* Navegación */}
       <div className="sticky bottom-0 border-t flex items-center justify-between px-6 py-4"
-        style={{ borderColor: '#2a3548', background: 'rgba(8,10,14,0.95)' }}>
-        <button
-          onClick={() => setPaso(p => p - 1)}
-          disabled={paso === 1}
-          className="btn-primary px-6 py-3 rounded-sm disabled:opacity-30 disabled:cursor-not-allowed"
-        >
+        style={{ borderColor: '#1c1712', background: 'rgba(6,4,2,0.95)' }}>
+        <button onClick={() => setPaso(p => p - 1)} disabled={paso === 1}
+          className="btn-primary px-6 py-3 rounded-sm disabled:opacity-30 disabled:cursor-not-allowed">
           ← ANTERIOR
         </button>
-
         <div className="flex gap-2">
           {PASOS.map(p => (
-            <div
-              key={p.id}
-              className="w-2 h-2 rounded-full transition-all"
+            <div key={p.id} className="w-2 h-2 rounded-full transition-all"
               style={{
-                background: paso === p.id ? '#ff1744' : paso > p.id ? '#4a607d' : '#2a3548',
-                boxShadow: paso === p.id ? '0 0 6px #ff1744' : 'none',
-              }}
-            />
+                background: paso === p.id ? colorAcento : paso > p.id ? '#5a4e40' : '#2e2820',
+                boxShadow: paso === p.id ? `0 0 6px ${colorAcento}` : 'none',
+              }} />
           ))}
         </div>
-
         {paso < PASOS.length ? (
-          <button
-            onClick={() => setPaso(p => p + 1)}
-            disabled={!puedeAvanzar()}
-            className="btn-primary px-6 py-3 rounded-sm disabled:opacity-30 disabled:cursor-not-allowed"
-          >
+          <button onClick={() => setPaso(p => p + 1)} disabled={!puedeAvanzar()}
+            className="btn-primary px-6 py-3 rounded-sm disabled:opacity-30 disabled:cursor-not-allowed">
             SIGUIENTE →
           </button>
         ) : (
-          <button
-            onClick={handleGuardar}
-            disabled={guardando || !nombre.trim()}
-            className="btn-success px-8 py-3 rounded-sm disabled:opacity-30 disabled:cursor-not-allowed"
-          >
+          <button onClick={handleGuardar} disabled={guardando || !nombre.trim()}
+            className="btn-success px-8 py-3 rounded-sm disabled:opacity-30 disabled:cursor-not-allowed">
             {guardando ? 'CREANDO...' : '✓ CREAR PERSONAJE'}
           </button>
         )}
@@ -495,153 +609,104 @@ export default function CrearPersonajePage() {
   );
 }
 
-/* ═══ VITAL CREATOR ═══ */
-function VitalCreator({ label, value, color, onChange, desc }: {
-  label: string; value: number; color: string; onChange: (v: number) => void; desc: string;
-}) {
+/* ═══ COMPONENTES AUXILIARES ═══ */
+
+function Campo({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="p-4 rounded-sm" style={{ background: 'rgba(13,17,23,0.8)', border: `1px solid ${color}30` }}>
-      <div className="flex items-center justify-between mb-2">
-        <span className="hud-label" style={{ color }}>{label}</span>
-        <span className="font-hud text-2xl font-bold" style={{ color }}>{value}</span>
-      </div>
-      <p className="text-xs mb-3" style={{ color: '#4a607d' }}>{desc}</p>
-      <div className="flex items-center gap-4">
-        <input
-          type="range" min={1} max={999} value={value}
-          onChange={e => onChange(Number(e.target.value))}
-          className="flex-1"
-        />
-        <input
-          type="number" value={value} min={1} max={999}
-          onChange={e => onChange(Number(e.target.value))}
-          className="hud-input w-20 px-2 py-2 text-center rounded-sm font-hud"
-          style={{ color, fontSize: '16px' }}
-        />
-      </div>
+    <div>
+      <label className="hud-label block mb-2" style={{ color: '#7a6e60' }}>{label}</label>
+      {children}
     </div>
   );
 }
 
-/* ═══ ACCION EDITOR ═══ */
+function CampoNum({ label, value, onChange, color, min, step }: {
+  label: string; value: number; onChange: (v: number) => void; color: string; min?: number; step?: number;
+}) {
+  return (
+    <div className="p-4 rounded-sm" style={{ background: `${color}08`, border: `1px solid ${color}30` }}>
+      <span className="hud-label block mb-2" style={{ color }}>{label}</span>
+      <input type="number" value={value} min={min} step={step}
+        onChange={e => onChange(Number(e.target.value))}
+        className="hud-input w-full px-3 py-3 rounded-sm font-heading text-center"
+        style={{ color, fontSize: '20px' }} />
+    </div>
+  );
+}
+
 function AccionEditor({ accion, index, colorAcento, onChange, onDelete }: {
   accion: AccionPersonaje; index: number; colorAcento: string;
-  onChange: (id: string, campo: keyof AccionPersonaje, valor: string) => void;
+  onChange: (id: string, campo: string, valor: string) => void;
   onDelete: (id: string) => void;
 }) {
   return (
-    <div className="p-4 rounded-sm" style={{ background: 'rgba(13,17,23,0.8)', border: '1px solid #2a3548' }}>
-      <div className="flex items-center justify-between mb-3">
+    <div className="p-4 rounded-sm" style={{ background: 'rgba(12,10,7,0.8)', border: '1px solid #2e2820' }}>
+      <div className="flex justify-between mb-3">
         <span className="hud-label" style={{ color: colorAcento }}>ACCIÓN {index + 1}</span>
-        <button onClick={() => onDelete(accion.id)} className="hud-label cursor-pointer hover:opacity-70" style={{ color: '#ff1744' }}>
-          ✕ ELIMINAR
-        </button>
+        <button onClick={() => onDelete(accion.id)} className="hud-label cursor-pointer hover:opacity-70" style={{ color: '#8b2020' }}>✕</button>
       </div>
-      <div className="grid grid-cols-2 gap-3 mb-3">
-        <div>
-          <label className="hud-label block mb-1" style={{ color: '#8fa8c8', fontSize: '9px' }}>NOMBRE</label>
-          <input
-            type="text"
-            value={accion.nombre}
-            onChange={e => onChange(accion.id, 'nombre', e.target.value)}
-            placeholder="Ej: Golpe de Espada"
-            className="hud-input w-full px-3 py-2 rounded-sm text-sm"
-          />
+      <div className="grid grid-cols-3 gap-3 mb-3">
+        <div className="col-span-2">
+          <label className="hud-label block mb-1" style={{ color: '#7a6e60', fontSize: '9px' }}>NOMBRE</label>
+          <input type="text" value={accion.nombre} onChange={e => onChange(accion.id, 'nombre', e.target.value)}
+            placeholder="Ej: Espadazo" className="hud-input w-full px-2 py-2 rounded-sm text-sm" />
         </div>
         <div>
-          <label className="hud-label block mb-1" style={{ color: '#8fa8c8', fontSize: '9px' }}>TIPO</label>
-          <select
-            value={accion.tipo}
-            onChange={e => onChange(accion.id, 'tipo', e.target.value)}
-            className="hud-select w-full px-3 py-2 rounded-sm text-sm"
-          >
+          <label className="hud-label block mb-1" style={{ color: '#7a6e60', fontSize: '9px' }}>ESTADO</label>
+          <select value={accion.estado} onChange={e => onChange(accion.id, 'estado', e.target.value)}
+            className="hud-select w-full px-2 py-2 rounded-sm text-sm">
+            <option value="normal">Normal</option>
+            <option value="especial">Especial</option>
+            <option value="ambos">Ambos</option>
+          </select>
+        </div>
+      </div>
+      <div className="grid grid-cols-3 gap-3 mb-3">
+        <div>
+          <label className="hud-label block mb-1" style={{ color: '#7a6e60', fontSize: '9px' }}>TIRADA IMPACTAR</label>
+          <input type="text" value={accion.tirada_impactar ?? ''} onChange={e => onChange(accion.id, 'tirada_impactar', e.target.value)}
+            placeholder="+6" className="hud-input w-full px-2 py-2 rounded-sm text-sm" />
+        </div>
+        <div>
+          <label className="hud-label block mb-1" style={{ color: '#7a6e60', fontSize: '9px' }}>ALCANCE</label>
+          <input type="text" value={accion.alcance ?? ''} onChange={e => onChange(accion.id, 'alcance', e.target.value)}
+            placeholder="5 pies" className="hud-input w-full px-2 py-2 rounded-sm text-sm" />
+        </div>
+        <div>
+          <label className="hud-label block mb-1" style={{ color: '#7a6e60', fontSize: '9px' }}>TIPO</label>
+          <select value={accion.tipo} onChange={e => onChange(accion.id, 'tipo', e.target.value)}
+            className="hud-select w-full px-2 py-2 rounded-sm text-sm">
             <option value="ataque">Ataque</option>
             <option value="magia">Magia</option>
             <option value="reaccion">Reacción</option>
             <option value="habilidad">Habilidad</option>
+            <option value="bonus">Acción Bonus</option>
           </select>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-3 mb-3">
+      <div className="grid grid-cols-3 gap-3 mb-3">
         <div>
-          <label className="hud-label block mb-1" style={{ color: '#8fa8c8', fontSize: '9px' }}>DAÑO / EFECTO</label>
-          <input type="text" value={accion.danio ?? ''}
-            onChange={e => onChange(accion.id, 'danio', e.target.value)}
-            placeholder="Ej: 2d6+3" className="hud-input w-full px-3 py-2 rounded-sm text-sm" />
+          <label className="hud-label block mb-1" style={{ color: '#7a6e60', fontSize: '9px' }}>DAÑO</label>
+          <input type="text" value={accion.danio ?? ''} onChange={e => onChange(accion.id, 'danio', e.target.value)}
+            placeholder="2d6+3" className="hud-input w-full px-2 py-2 rounded-sm text-sm" />
         </div>
         <div>
-          <label className="hud-label block mb-1" style={{ color: '#8fa8c8', fontSize: '9px' }}>COOLDOWN</label>
-          <input type="text" value={accion.cooldown ?? ''}
-            onChange={e => onChange(accion.id, 'cooldown', e.target.value)}
-            placeholder="Ej: 1 turno" className="hud-input w-full px-3 py-2 rounded-sm text-sm" />
+          <label className="hud-label block mb-1" style={{ color: '#7a6e60', fontSize: '9px' }}>TIPO DAÑO</label>
+          <input type="text" value={accion.tipo_danio ?? ''} onChange={e => onChange(accion.id, 'tipo_danio', e.target.value)}
+            list="td-list" placeholder="cortante" className="hud-input w-full px-2 py-2 rounded-sm text-sm" />
+          <datalist id="td-list">{TIPOS_DANIO.map(t => <option key={t} value={t} />)}</datalist>
+        </div>
+        <div>
+          <label className="hud-label block mb-1" style={{ color: '#7a6e60', fontSize: '9px' }}>COOLDOWN</label>
+          <input type="text" value={accion.cooldown ?? ''} onChange={e => onChange(accion.id, 'cooldown', e.target.value)}
+            placeholder="1/turno" className="hud-input w-full px-2 py-2 rounded-sm text-sm" />
         </div>
       </div>
       <div>
-        <label className="hud-label block mb-1" style={{ color: '#8fa8c8', fontSize: '9px' }}>DESCRIPCIÓN</label>
-        <textarea
-          value={accion.descripcion}
-          onChange={e => onChange(accion.id, 'descripcion', e.target.value)}
-          placeholder="¿Qué hace esta acción?"
-          className="hud-input w-full px-3 py-2 rounded-sm text-sm resize-none"
-          rows={2}
-        />
+        <label className="hud-label block mb-1" style={{ color: '#7a6e60', fontSize: '9px' }}>DESCRIPCIÓN</label>
+        <textarea value={accion.descripcion} onChange={e => onChange(accion.id, 'descripcion', e.target.value)}
+          placeholder="Efecto de la acción" className="hud-input w-full px-3 py-2 rounded-sm text-sm resize-none" rows={2} />
       </div>
-    </div>
-  );
-}
-
-/* ═══ RETRATO UPLOADER ═══ */
-function RetratoUploader({ estadoKey, label, desc, color, imagen, cargando, onSubir }: {
-  estadoKey: string; label: string; desc: string; color: string;
-  imagen?: string; cargando: boolean;
-  onSubir: (key: string, file: File) => void;
-}) {
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) onSubir(estadoKey, file);
-  };
-
-  return (
-    <div className="rounded-sm overflow-hidden" style={{ border: `1px solid ${color}30` }}>
-      {/* Preview */}
-      <div className="relative h-40" style={{ background: 'rgba(13,17,23,0.8)' }}>
-        {imagen ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={imagen} alt={label} className="w-full h-full object-cover" />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center flex-col gap-2">
-            {cargando ? (
-              <div className="animate-spin w-8 h-8 border-2 rounded-full"
-                style={{ borderColor: `${color}40`, borderTopColor: color }} />
-            ) : (
-              <>
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1" opacity={0.4}>
-                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                  <circle cx="8.5" cy="8.5" r="1.5"/>
-                  <polyline points="21,15 16,10 5,21"/>
-                </svg>
-                <span className="hud-label" style={{ color: `${color}80`, fontSize: '9px' }}>Sin imagen</span>
-              </>
-            )}
-          </div>
-        )}
-        {imagen && (
-          <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
-            <span className="hud-label" style={{ color }}>CAMBIAR</span>
-          </div>
-        )}
-      </div>
-      {/* Info y botón */}
-      <label className="block p-2 cursor-pointer hover:opacity-80 transition-opacity"
-        style={{ background: `${color}08` }}>
-        <input type="file" accept="image/*" onChange={handleChange} className="hidden" />
-        <div className="hud-label" style={{ color, fontSize: '9px' }}>{label}</div>
-        <div className="text-xs mt-0.5" style={{ color: '#4a607d' }}>{desc}</div>
-        <div className="mt-2 hud-label text-center py-1 rounded-sm"
-          style={{ background: `${color}10`, border: `1px solid ${color}30`, color, fontSize: '9px' }}>
-          {imagen ? 'CAMBIAR IMAGEN' : 'SUBIR IMAGEN'}
-        </div>
-      </label>
     </div>
   );
 }
