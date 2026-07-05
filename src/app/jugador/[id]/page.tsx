@@ -3,20 +3,16 @@
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import dynamic from 'next/dynamic';
 import { usePersonaje } from '@/hooks/usePersonajes';
 import { derivarEstadoRetrato, porcentajeVida, subirRetrato } from '@/lib/db';
-import { EstadoRetrato, CondicionEstado, AccionPersonaje, RasgoPersonaje } from '@/types/character';
+import { EstadoRetrato, CondicionEstado, AccionPersonaje, RasgoPersonaje, EstadisticasBase, formatModificador } from '@/types/character';
 import { CONDICIONES_INFO, ATRIBUTOS_BASE } from '@/lib/constants';
-
-const RadarHUD = dynamic(() => import('@/components/hud/RadarHUD'), { ssr: false });
 
 export default function JugadorHUDPage() {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
   const { personaje, actualizar } = usePersonaje(id);
-  const [tabDer, setTabDer] = useState<'acciones' | 'rasgos' | 'equipo'>('acciones');
   const [modalFotosOpen, setModalFotosOpen] = useState(false);
 
   if (!personaje) {
@@ -40,7 +36,12 @@ export default function JugadorHUDPage() {
 
   const accionesNormales  = personaje.acciones.filter(a => a.estado === 'normal' || a.estado === 'ambos');
   const accionesEspeciales = personaje.acciones.filter(a => a.estado === 'especial' || a.estado === 'ambos');
-  const accionesActivas   = personaje.estado_especial ? accionesEspeciales : accionesNormales;
+
+  // Buscar si hay un rasgo que describa el estado especial
+  const rasgoEspecial = personaje.rasgos.find(r => 
+    r.nombre.toLowerCase().includes(personaje.nombre_estado_especial?.toLowerCase() || '') ||
+    (personaje.nombre_estado_especial?.toLowerCase() || '').includes(r.nombre.toLowerCase())
+  );
 
   return (
     <div className="bg-dungeon min-h-screen flex flex-col relative overflow-hidden">
@@ -68,19 +69,19 @@ export default function JugadorHUDPage() {
       </AnimatePresence>
 
       {/* ── Barra superior ── */}
-      <div className="flex items-center justify-between px-4 py-2 border-b flex-shrink-0"
-        style={{ borderColor: '#1c1712', background: 'rgba(6,4,2,0.92)' }}>
+      <div className="flex items-center justify-between px-6 py-3 border-b flex-shrink-0"
+        style={{ borderColor: '#1c1712', background: 'rgba(6,4,2,0.95)' }}>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <div className="connection-dot online" />
             <span className="hud-label" style={{ color: '#4a6030', fontSize: '9px' }}>ENLAZADO</span>
           </div>
           <div style={{ width: '1px', height: '12px', background: '#2e2820' }} />
-          <span className="font-heading" style={{ color: '#5a4e40', fontSize: '10px', letterSpacing: '0.15em' }}>
+          <span className="font-heading text-stone-300" style={{ fontSize: '11px', letterSpacing: '0.15em' }}>
             {personaje.nombre.toUpperCase()} · {personaje.clase.toUpperCase()} · NV.{personaje.nivel}
           </span>
           {personaje.subclase && (
-            <span className="hud-label" style={{ color: '#3d3028', fontSize: '8px' }}>
+            <span className="hud-label text-stone-500" style={{ fontSize: '9px' }}>
               ({personaje.subclase})
             </span>
           )}
@@ -108,12 +109,12 @@ export default function JugadorHUDPage() {
 
         <div className="flex items-center gap-2">
           <button onClick={() => router.push(`/jugador/${id}/editar`)}
-            className="btn-primary px-3 py-1.5 text-xs">
-            ✎ EDITAR
+            className="btn-primary px-3 py-1.5 text-xs font-heading">
+            ✎ CONFIGURAR
           </button>
           <button onClick={() => router.push('/jugador')}
-            className="hud-label px-3 py-1.5 cursor-pointer hover:opacity-60 transition-opacity"
-            style={{ color: '#3d3028', fontSize: '10px' }}>
+            className="hud-label px-3 py-1.5 cursor-pointer hover:opacity-60 transition-opacity font-heading"
+            style={{ color: '#5a4e40', fontSize: '10px' }}>
             ← SALIR
           </button>
         </div>
@@ -122,50 +123,112 @@ export default function JugadorHUDPage() {
       {/* ── Cuerpo principal HUD ── */}
       <div className="flex-1 flex overflow-hidden">
 
-        {/* ═══ COLUMNA IZQUIERDA (Antes Central) ═══ */}
-        <div className="w-80 flex-shrink-0 flex flex-col gap-2 p-3 border-r overflow-y-auto"
-          style={{ borderColor: '#1c1712', background: 'rgba(6,4,2,0.35)' }}>
+        {/* ═══ COLUMNA IZQUIERDA (Datos, Atributos, Habilidades competentes) ═══ */}
+        <div className="w-80 flex-shrink-0 flex flex-col gap-3 p-4 border-r overflow-y-auto"
+          style={{ borderColor: '#1c1712', background: 'rgba(6,4,2,0.4)' }}>
 
-          {/* Radar de atributos */}
-          <div className="stone-frame overflow-hidden" style={{ minHeight: '280px' }}>
-            <div className="flex items-center justify-between p-3 border-b" style={{ borderColor: '#1c1712' }}>
-              <span className="hud-label" style={{ color: '#5a4e40', fontSize: '9px' }}>ATRIBUTOS</span>
-              <span className="font-heading text-sm font-bold"
-                style={{ color: '#9a7020', letterSpacing: '0.06em' }}>
-                {personaje.nombre}
-              </span>
+          {/* Retrato */}
+          <PortraitModule
+            estadoRetrato={estadoRetrato}
+            urlRetrato={urlRetrato}
+            nombre={personaje.nombre}
+            colorAcento={personaje.color_acento}
+            estadoEspecial={personaje.estado_especial}
+            onEditPhotos={() => setModalFotosOpen(true)}
+          />
+
+          {/* Información Básica */}
+          <div className="p-3 stone-frame space-y-1.5 text-xs">
+            <div className="flex justify-between">
+              <span className="font-heading text-stone-500">RAZA</span>
+              <span className="font-lore text-stone-300 font-bold">{personaje.raza}</span>
             </div>
-            <div style={{ height: '240px' }}>
-              <RadarHUD stats={personaje.estadisticas} color={personaje.color_acento} />
+            <div className="flex justify-between">
+              <span className="font-heading text-stone-500">CLASE</span>
+              <span className="font-lore text-stone-300 font-bold">{personaje.clase}</span>
+            </div>
+            {personaje.subclase && (
+              <div className="flex justify-between">
+                <span className="font-heading text-stone-500">SUBCLASE</span>
+                <span className="font-lore text-stone-300 font-bold">{personaje.subclase}</span>
+              </div>
+            )}
+            {personaje.trasfondo && (
+              <div className="flex justify-between">
+                <span className="font-heading text-stone-500">TRASFONDO</span>
+                <span className="font-lore text-stone-400">{personaje.trasfondo}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Atributos y Bonificadores (Formato de alta fidelidad) */}
+          <div className="p-3 stone-frame">
+            <div className="grid grid-cols-2 gap-3">
+              {/* Columna Izquierda: Atributos y Modificadores */}
+              <div className="space-y-2 pr-2 border-r" style={{ borderColor: 'rgba(90,64,16,0.15)' }}>
+                {ATRIBUTOS_BASE.map(attr => {
+                  const val = personaje.estadisticas[attr.key as keyof EstadisticasBase];
+                  const mod = formatModificador(val);
+                  return (
+                    <div key={attr.key} className="flex items-center justify-between text-xs">
+                      <span className="font-heading text-[10px] tracking-wider text-stone-500">{attr.label}</span>
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="font-heading font-bold text-stone-200">{val}</span>
+                        <span className="font-heading text-[9px] text-stone-400 font-semibold">({mod})</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Columna Derecha: Bonificadores de Combate */}
+              <div className="pl-2 flex flex-col justify-between text-[11px] space-y-2">
+                <div>
+                  <span className="font-heading text-[8px] tracking-wider text-stone-500 block">BONIFICADOR DE ATAQUE</span>
+                  <span className="font-heading text-base font-bold text-red-500">+{personaje.bonificador_ataque}</span>
+                </div>
+                
+                <div className="border-t pt-1.5" style={{ borderColor: 'rgba(90,64,16,0.1)' }}>
+                  <span className="font-heading text-[8px] tracking-wider text-stone-500 block">BONIFICADOR COMPETENCIA</span>
+                  <span className="font-heading text-base font-bold text-stone-300">+{personaje.bonificador_competencia}</span>
+                </div>
+
+                {/* Tirada para Impactar */}
+                <div className="border-t pt-1.5" style={{ borderColor: 'rgba(90,64,16,0.1)' }}>
+                  <span className="font-heading text-[8px] tracking-wider text-stone-500 block">TIRADA PARA IMPACTAR</span>
+                  <div className="space-y-0.5 mt-0.5">
+                    <div className="flex justify-between text-[9px]">
+                      <span className="text-stone-300 font-bold">1d20 + {personaje.bonificador_ataque}</span>
+                      <span className="text-stone-500">(Normal)</span>
+                    </div>
+                    {personaje.ca_especial && (
+                      <div className="flex justify-between text-[9px] mt-0.5">
+                        <span className="text-red-400 font-bold">1d20 + {personaje.bonificador_ataque + 2}</span>
+                        <span className="text-red-500">({personaje.nombre_estado_especial ? personaje.nombre_estado_especial.split(' ')[1] || 'Especial' : 'Especial'})</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
           {/* Habilidades competentes */}
           {Object.keys(personaje.habilidades).length > 0 && (
-            <div className="p-3 stone-frame">
-              <p className="hud-label mb-2" style={{ color: '#5a4e40', fontSize: '9px' }}>COMPETENCIAS</p>
-              <div className="grid grid-cols-1 gap-y-1">
+            <div className="p-3 stone-frame space-y-1.5">
+              <p className="font-heading text-[8px] tracking-widest text-stone-500 border-b pb-1 mb-2" style={{ borderColor: 'rgba(90,64,16,0.1)' }}>
+                HABILIDADES COMPETENTES
+              </p>
+              <div className="space-y-1">
                 {Object.entries(personaje.habilidades)
                   .sort((a, b) => b[1].bonus - a[1].bonus)
                   .map(([habilidad, entrada]) => (
-                    <div key={habilidad} className="flex items-center gap-2">
-                      <span
-                        className="w-4 h-4 rounded-sm flex-shrink-0 flex items-center justify-center text-center"
-                        style={{
-                          background: entrada.experto ? `${personaje.color_acento}20` : 'rgba(42,53,72,0.4)',
-                          border: `1px solid ${entrada.experto ? personaje.color_acento : '#2a3548'}`,
-                          fontSize: '7px',
-                          color: entrada.experto ? personaje.color_acento : '#4a607d',
-                        }}
-                        title={entrada.experto ? 'Experto' : 'Competente'}
-                      >
-                        {entrada.experto ? '★' : '◆'}
-                      </span>
-                      <span className="font-lore text-xs truncate" style={{ color: '#7a6e60' }}>
-                        {habilidad}
-                      </span>
-                      <span className="ml-auto font-heading text-xs font-bold flex-shrink-0"
-                        style={{ color: personaje.color_acento }}>
+                    <div key={habilidad} className="flex items-center justify-between text-xs font-lore text-stone-400">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[8px] text-stone-600">•</span>
+                        <span>{habilidad}</span>
+                      </div>
+                      <span className="font-heading font-bold" style={{ color: personaje.color_acento }}>
                         {entrada.bonus >= 0 ? `+${entrada.bonus}` : `${entrada.bonus}`}
                       </span>
                     </div>
@@ -176,14 +239,16 @@ export default function JugadorHUDPage() {
 
           {/* Salvaciones */}
           {Object.keys(personaje.salvaciones).length > 0 && (
-            <div className="p-3 stone-frame">
-              <p className="hud-label mb-2" style={{ color: '#5a4e40', fontSize: '9px' }}>SALVACIONES</p>
-              <div className="flex flex-wrap gap-2">
+            <div className="p-3 stone-frame space-y-1.5">
+              <p className="font-heading text-[8px] tracking-widest text-stone-500 border-b pb-1 mb-2" style={{ borderColor: 'rgba(90,64,16,0.1)' }}>
+                TIRADAS DE SALVACIÓN
+              </p>
+              <div className="flex flex-wrap gap-1.5">
                 {Object.entries(personaje.salvaciones).map(([attr, bonus]) => (
-                  <div key={attr} className="flex items-center gap-1 px-2 py-1 rounded-sm"
-                    style={{ background: 'rgba(42,53,72,0.3)', border: '1px solid #2a3548' }}>
-                    <span className="hud-label" style={{ color: '#8fa8c8', fontSize: '9px' }}>{attr}</span>
-                    <span className="font-heading font-bold" style={{ color: personaje.color_acento, fontSize: '10px' }}>
+                  <div key={attr} className="flex items-center gap-1 px-2 py-0.5 rounded-sm text-[10px]"
+                    style={{ background: 'rgba(42,53,72,0.2)', border: '1px solid rgba(42,53,72,0.4)' }}>
+                    <span className="font-heading text-[9px] text-[#8fa8c8]">{attr.toUpperCase()}</span>
+                    <span className="font-heading font-bold" style={{ color: personaje.color_acento }}>
                       {bonus >= 0 ? `+${bonus}` : `${bonus}`}
                     </span>
                   </div>
@@ -191,267 +256,233 @@ export default function JugadorHUDPage() {
               </div>
             </div>
           )}
-
-          {/* Ventajas / Desventajas */}
-          {(personaje.ventajas.length > 0 || personaje.desventajas.length > 0) && (
-            <div className="flex flex-col gap-2">
-              {personaje.ventajas.length > 0 && (
-                <div className="p-3 stone-frame" style={{ borderColor: '#243018' }}>
-                  <p className="hud-label mb-2" style={{ color: '#384828', fontSize: '9px' }}>VIRTUDES</p>
-                  <div className="space-y-1">
-                    {personaje.ventajas.map((v, i) => (
-                      <div key={i} className="flex items-start gap-2"
-                        style={{ color: '#7a6e60', fontSize: '12px', fontFamily: 'Crimson Pro, serif' }}>
-                        <div className="w-1.5 h-1.5 flex-shrink-0 mt-1.5" style={{ background: '#344020' }} />
-                        {v}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {personaje.desventajas.length > 0 && (
-                <div className="p-3 stone-frame" style={{ borderColor: '#2a0808' }}>
-                  <p className="hud-label mb-2" style={{ color: '#4a1010', fontSize: '9px' }}>MALDICIONES</p>
-                  <div className="space-y-1">
-                    {personaje.desventajas.map((d, i) => (
-                      <div key={i} className="flex items-start gap-2"
-                        style={{ color: '#7a6e60', fontSize: '12px', fontFamily: 'Crimson Pro, serif' }}>
-                        <div className="w-1.5 h-1.5 flex-shrink-0 mt-1.5" style={{ background: '#4a1010' }} />
-                        {d}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
         </div>
 
-        {/* ═══ COLUMNA CENTRAL (Antes Izquierda) ═══ */}
-        <div className="flex-1 flex flex-col gap-2 p-3 min-w-0 overflow-y-auto">
-          
-          {/* Fila superior: Retrato y Estadísticas de HP/Combate lado a lado */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 flex-shrink-0">
-            {/* Retrato */}
-            <PortraitModule
-              estadoRetrato={estadoRetrato}
-              urlRetrato={urlRetrato}
-              nombre={personaje.nombre}
-              colorAcento={personaje.color_acento}
-              estadoEspecial={personaje.estado_especial}
-              onEditPhotos={() => setModalFotosOpen(true)}
-            />
+        {/* ═══ COLUMNA DERECHA (Plaquetas HP/CA, Tablas de Habilidades y Notas) ═══ */}
+        <div className="flex-1 flex flex-col gap-4 p-4 overflow-y-auto min-w-0">
 
-            {/* Vitales, Combate */}
-            <div className="flex flex-col gap-2 justify-between">
-              {/* HP */}
-              <div className="p-4 stone-frame flex-1 flex flex-col justify-center">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="hud-label" style={{ color: '#6b1818', fontSize: '9px' }}>PUNTOS DE GOLPE</span>
-                  <div className="flex items-baseline gap-1">
-                    <span className="font-heading font-bold" style={{ color: '#8b2020', fontSize: '18px' }}>
-                      {personaje.hp}
-                    </span>
-                    <span className="font-heading" style={{ color: '#3d3028', fontSize: '11px' }}>
-                      /{personaje.hp_max}
-                    </span>
-                  </div>
-                </div>
-                <div className="glow-bar-track h-5 relative">
-                  <motion.div
-                    className="glow-bar-fill h-full bar-hp"
-                    animate={{ width: `${hpPct}%` }}
-                    transition={{ type: 'spring', stiffness: 80, damping: 20 }}
-                  />
-                  <span className="absolute right-2 top-0 bottom-0 flex items-center font-heading"
-                    style={{ color: 'rgba(180,160,120,0.25)', fontSize: '9px' }}>
-                    {Math.round(hpPct)}%
-                  </span>
-                </div>
-              </div>
-
-              {/* Combate — CA, velocidad, iniciativa */}
-              <div className="p-4 stone-frame flex-1 flex flex-col justify-center">
-                <p className="hud-label mb-2" style={{ color: '#5a4e40', fontSize: '9px' }}>COMBATE</p>
-                <div className="grid grid-cols-3 gap-2">
-                  <StatCombate
-                    label={personaje.estado_especial && personaje.ca_especial ? 'CA*' : 'CA'}
-                    value={personaje.estado_especial && personaje.ca_especial
-                      ? personaje.ca_especial
-                      : personaje.ca}
-                    color="#7a5818"
-                  />
-                  <StatCombate label="VEL" value={`${personaje.velocidad}p`} color="#3a4870" />
-                  <StatCombate
-                    label="INIC"
-                    value={personaje.iniciativa >= 0 ? `+${personaje.iniciativa}` : `${personaje.iniciativa}`}
-                    color="#344020"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Fila inferior: Bonificaciones adicionales y Afligidos */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {/* Bonificaciones y Datos */}
-            <div className="p-3 stone-frame space-y-2">
-              <p className="hud-label" style={{ color: '#5a4e40', fontSize: '9px' }}>BONIFICADORES D&D</p>
-              <div className="grid grid-cols-3 gap-2">
-                <StatCombate label="COMPET." value={`+${personaje.bonificador_competencia}`} color="#7a5818" />
-                <StatCombate label="ATAQUE" value={`+${personaje.bonificador_ataque}`} color="#6b1818" />
-                <StatCombate label="MAGIA" value={`+${personaje.bonificador_magia}`} color="#3a4870" />
-              </div>
-              {personaje.dado_especial && (
-                <div className="px-2 py-1 text-center rounded-sm"
-                  style={{ background: 'rgba(107,24,24,0.1)', border: '1px solid #3d1010' }}>
-                  <span className="hud-label" style={{ color: '#8b2020', fontSize: '9px' }}>
-                    DADO ADICIONAL: {personaje.dado_especial}
-                  </span>
-                </div>
-              )}
+          {/* Fila superior: Escudos/Plaquetas de HP y CA */}
+          <div className="flex justify-center gap-6 flex-shrink-0">
+            {/* HP Card */}
+            <div className="relative w-28 h-20 bg-stone-950/90 border border-stone-900 rounded-b-xl flex flex-col items-center justify-center shadow-lg"
+              style={{ borderTop: `3px solid #8b2020` }}>
+              <span className="font-heading text-[9px] tracking-widest text-stone-500">HP MÁXIMO</span>
+              <span className="font-heading text-2xl font-bold text-red-500 leading-none my-1">{personaje.hp}</span>
+              <span className="text-[9px] text-stone-500">/ {personaje.hp_max} PV</span>
             </div>
 
-            {/* Condiciones activas (Afligidos) */}
-            <div className="p-3 stone-frame flex flex-col justify-center">
-              <p className="hud-label mb-2" style={{ color: '#5a4e40', fontSize: '9px' }}>AFLICCIONES / CONDICIONES</p>
-              {personaje.condiciones_activas.length > 0 ? (
-                <div className="flex flex-wrap gap-1.5">
-                  {personaje.condiciones_activas.map(cond => (
-                    <motion.span
-                      key={cond}
-                      initial={{ scale: 0, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      className="badge-condicion"
-                      style={{
-                        color: CONDICIONES_INFO[cond as CondicionEstado].color,
-                        borderColor: CONDICIONES_INFO[cond as CondicionEstado].color,
-                        background: `${CONDICIONES_INFO[cond as CondicionEstado].color}12`,
-                        fontSize: '9px',
-                        padding: '2px 6px',
-                      }}
-                    >
-                      {CONDICIONES_INFO[cond as CondicionEstado].nombre}
-                    </motion.span>
-                  ))}
-                </div>
-              ) : (
-                <span className="text-xs" style={{ color: '#3d3028' }}>Sin aflicciones activas.</span>
-              )}
+            {/* CA Normal */}
+            <div className="relative w-28 h-20 bg-stone-950/90 border border-stone-900 rounded-b-xl flex flex-col items-center justify-center shadow-lg"
+              style={{ borderTop: `3px solid #7a5818` }}>
+              <span className="font-heading text-[9px] tracking-widest text-stone-500">CA NORMAL</span>
+              <span className="font-heading text-2xl font-bold text-gold leading-none my-1">{personaje.ca}</span>
+              <span className="text-[8px] text-stone-500">ARMADURA</span>
             </div>
-          </div>
-        </div>
 
-        {/* ═══ COLUMNA DERECHA ═══ */}
-        <div className="w-72 flex-shrink-0 flex flex-col gap-2 p-3 border-l overflow-y-auto"
-          style={{ borderColor: '#1c1712' }}>
-
-          {/* Tabs de la columna derecha */}
-          <div className="flex gap-1 flex-shrink-0">
-            {(['acciones', 'rasgos', 'equipo'] as const).map(t => (
-              <button
-                key={t}
-                onClick={() => setTabDer(t)}
-                className="flex-1 py-1.5 hud-label transition-all cursor-pointer"
-                style={{
-                  background: tabDer === t ? `${personaje.color_acento}15` : 'transparent',
-                  border: `1px solid ${tabDer === t ? personaje.color_acento : '#2e2820'}`,
-                  color: tabDer === t ? personaje.color_acento : '#5a4e40',
-                  fontSize: '8px',
-                }}
-              >
-                {t.toUpperCase()}
-              </button>
-            ))}
-          </div>
-
-          {/* Tab: Acciones */}
-          {tabDer === 'acciones' && (
-            <div className="stone-frame overflow-hidden flex-1">
-              <div className="p-3 border-b" style={{ borderColor: '#1c1712' }}>
-                <div className="flex items-center justify-between">
-                  <span className="hud-label" style={{ color: '#5a4e40', fontSize: '9px' }}>
-                    {personaje.estado_especial ? personaje.nombre_estado_especial : 'ESTADO NORMAL'}
-                  </span>
-                  <span className="hud-label" style={{ color: '#3d3028', fontSize: '8px' }}>
-                    {accionesActivas.length} disponibles
-                  </span>
-                </div>
+            {/* CA Especial */}
+            {personaje.ca_especial && (
+              <div className="relative w-28 h-20 bg-stone-950/90 border border-stone-900 rounded-b-xl flex flex-col items-center justify-center shadow-lg"
+                style={{ borderTop: `3px solid #a62626` }}>
+                <span className="font-heading text-[9px] tracking-widest text-red-400">
+                  CA {personaje.nombre_estado_especial ? personaje.nombre_estado_especial.split(' ')[1] || 'ESPECIAL' : 'ESPECIAL'}
+                </span>
+                <span className="font-heading text-2xl font-bold text-red-500 leading-none my-1">{personaje.ca_especial}</span>
+                <span className="text-[8px] text-stone-500">MODIFICADO</span>
               </div>
-              <div className="p-3 space-y-2">
-                {accionesActivas.length > 0 ? (
-                  accionesActivas.map(accion => (
-                    <ActionCard key={accion.id} accion={accion} colorAcento={personaje.color_acento} />
-                  ))
-                ) : (
-                  <p className="font-lore text-sm text-center py-4" style={{ color: '#3d3028' }}>
-                    Sin acciones para este estado.
+            )}
+          </div>
+
+          {/* Tablas de Habilidades/Acciones de Alta Fidelidad */}
+          <div className="stone-frame p-5 space-y-6">
+            
+            {/* 1. HABILIDADES - ESTADO NORMAL */}
+            <div>
+              <div className="flex items-center justify-between mb-4 border-b pb-2" style={{ borderColor: 'rgba(90,64,16,0.2)' }}>
+                <h3 className="font-heading text-xs font-bold tracking-widest text-[#b8a070] flex items-center gap-2">
+                  <span>⚜</span> HABILIDADES - ESTADO NORMAL
+                </h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse" style={{ minWidth: '550px' }}>
+                  <thead>
+                    <tr className="border-b border-stone-800 text-[10px] uppercase tracking-wider text-stone-500 font-heading">
+                      <th className="py-2.5 px-3 border border-stone-900/60">Habilidad</th>
+                      <th className="py-2.5 px-3 text-center border border-stone-900/60">Tirada para Impactar</th>
+                      <th className="py-2.5 px-3 text-center border border-stone-900/60">Alcance</th>
+                      <th className="py-2.5 px-3 text-center border border-stone-900/60">Daño</th>
+                      <th className="py-2.5 px-3 border border-stone-900/60">Efecto</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-stone-900/40">
+                    {accionesNormales.map(accion => (
+                      <tr key={accion.id} className="hover:bg-white/5 transition-colors">
+                        {/* Nombre + Icono */}
+                        <td className="py-3 px-3 font-heading text-stone-200 text-xs border border-stone-900/60">
+                          <div className="flex items-center gap-3">
+                            <ActionIcon name={accion.nombre} />
+                            <span className="tracking-wide uppercase font-bold text-[11px]">{accion.nombre}</span>
+                          </div>
+                        </td>
+                        {/* Tirada para Impactar */}
+                        <td className="py-3 px-3 text-center font-heading font-black text-stone-300 text-xs border border-stone-900/60">
+                          {formatTiradaImpactar(accion.tirada_impactar)}
+                        </td>
+                        {/* Alcance */}
+                        <td className="py-3 px-3 text-center font-lore text-stone-400 text-xs border border-stone-900/60">
+                          {accion.alcance || '—'}
+                        </td>
+                        {/* Daño */}
+                        <td className="py-3 px-3 text-center border border-stone-900/60">
+                          {accion.danio ? (
+                            <div className="font-heading text-xs">
+                              <span className="font-bold text-stone-300">{accion.danio}</span>
+                              {accion.tipo_danio && (
+                                <span className="block text-[10px] text-stone-500 leading-tight lowercase">{accion.tipo_danio}</span>
+                              )}
+                            </div>
+                          ) : '—'}
+                        </td>
+                        {/* Efecto */}
+                        <td className="py-3 px-3 font-lore text-stone-400 text-xs leading-relaxed border border-stone-900/60">
+                          {accion.descripcion}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* 2. HABILIDADES - ESTADO ESPECIAL */}
+            {personaje.nombre_estado_especial && (
+              <div className="pt-4 border-t border-stone-900/60">
+                <div className="flex items-center justify-between mb-2 pb-2">
+                  <h3 className="font-heading text-xs font-bold tracking-widest text-red-500 flex items-center gap-2">
+                    <span>⚡</span> HABILIDADES - {personaje.nombre_estado_especial.toUpperCase()}
+                  </h3>
+                </div>
+                
+                {rasgoEspecial && (
+                  <p className="text-xs italic text-stone-400 mb-4 bg-red-950/10 p-3 border border-red-900/25 rounded-sm leading-relaxed font-lore">
+                    {rasgoEspecial.descripcion}
                   </p>
                 )}
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse" style={{ minWidth: '550px' }}>
+                    <thead>
+                      <tr className="border-b border-stone-800 text-[10px] uppercase tracking-wider text-stone-500 font-heading">
+                        <th className="py-2.5 px-3 border border-stone-900/60">Habilidad</th>
+                        <th className="py-2.5 px-3 text-center border border-stone-900/60">Tirada para Impactar</th>
+                        <th className="py-2.5 px-3 text-center border border-stone-900/60">Alcance</th>
+                        <th className="py-2.5 px-3 text-center border border-stone-900/60">Daño</th>
+                        <th className="py-2.5 px-3 border border-stone-900/60">Efecto</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-stone-900/40">
+                      {accionesEspeciales.map(accion => (
+                        <tr key={accion.id} className="hover:bg-white/5 transition-colors">
+                          <td className="py-3 px-3 font-heading text-stone-200 text-xs border border-stone-900/60">
+                            <div className="flex items-center gap-3">
+                              <ActionIcon name={accion.nombre} />
+                              <span className="tracking-wide uppercase font-bold text-[11px]">{accion.nombre}</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-3 text-center font-heading font-black text-stone-300 text-xs border border-stone-900/60">
+                            {formatTiradaImpactar(accion.tirada_impactar)}
+                          </td>
+                          <td className="py-3 px-3 text-center font-lore text-stone-400 text-xs border border-stone-900/60">
+                            {accion.alcance || '—'}
+                          </td>
+                          <td className="py-3 px-3 text-center border border-stone-900/60">
+                            {accion.danio ? (
+                              <div className="font-heading text-xs">
+                                <span className="font-bold text-stone-300">{accion.danio}</span>
+                                {accion.tipo_danio && (
+                                  <span className="block text-[10px] text-stone-500 leading-tight lowercase">{accion.tipo_danio}</span>
+                                )}
+                              </div>
+                            ) : '—'}
+                          </td>
+                          <td className="py-3 px-3 font-lore text-stone-400 text-xs leading-relaxed border border-stone-900/60">
+                            {accion.descripcion}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Tab: Rasgos */}
-          {tabDer === 'rasgos' && (
-            <div className="space-y-2 flex-1">
-              {personaje.rasgos.length > 0 ? personaje.rasgos.map(rasgo => (
-                <RasgoCard key={rasgo.id} rasgo={rasgo} color={personaje.color_acento} />
-              )) : (
-                <p className="font-lore text-sm text-center py-8" style={{ color: '#3d3028' }}>
-                  Sin rasgos registrados.
+            {/* 3. NOTAS DEL ESTADO ESPECIAL */}
+            {personaje.nombre_estado_especial && (
+              <div className="mt-4 pt-3 border-t border-stone-900/60 text-center">
+                <span className="font-heading text-[10px] tracking-widest text-[#7a6e60] block mb-1">NOTAS</span>
+                <p className="font-lore text-xs text-stone-400 leading-relaxed italic">
+                  Puedes activar el {personaje.nombre_estado_especial} como acción adicional.
+                  Dura 1 minuto o hasta quedar inconsciente.
                 </p>
-              )}
-            </div>
-          )}
+              </div>
+            )}
+          </div>
 
-          {/* Tab: Equipo */}
-          {tabDer === 'equipo' && (
-            <div className="flex-1">
-              {personaje.equipo.length > 0 ? (
-                <div className="p-3 stone-frame">
-                  <div className="space-y-1.5">
-                    {personaje.equipo.map((item, i) => (
-                      <div key={i} className="flex items-start gap-2"
-                        style={{ color: '#7a6e60', fontFamily: 'Crimson Pro, serif', fontSize: '13px' }}>
-                        <span style={{ color: '#5a4010', flexShrink: 0 }}>◆</span>
-                        {item}
-                      </div>
-                    ))}
+          {/* Rasgos y Crónica/Historia */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            
+            {/* Rasgos */}
+            <div className="space-y-3">
+              <span className="font-heading text-[10px] tracking-widest text-stone-500 block">RASGOS RACIALES / DE CLASE</span>
+              {personaje.rasgos.map(rasgo => (
+                <div key={rasgo.id} className="p-4 stone-frame flex gap-3.5 items-start">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-stone-900/60 border border-stone-900/60 flex items-center justify-center text-[#7a5818]">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                      <circle cx="12" cy="12" r="10"/>
+                      <path d="M12 2v20M2 12h20M5.75 5.75l12.5 12.5M18.25 5.75L5.75 18.25"/>
+                    </svg>
+                  </div>
+                  <div className="space-y-1 flex-1">
+                    <h4 className="font-heading text-xs font-bold uppercase tracking-wide text-stone-300">
+                      {rasgo.nombre}
+                    </h4>
+                    <p className="font-lore text-[12px] leading-relaxed text-stone-400">
+                      {rasgo.descripcion}
+                    </p>
                   </div>
                 </div>
-              ) : (
-                <p className="font-lore text-sm text-center py-8" style={{ color: '#3d3028' }}>
-                  Sin equipo registrado.
-                </p>
-              )}
-              {personaje.idiomas.length > 0 && (
-                <div className="mt-2 p-3 stone-frame">
-                  <p className="hud-label mb-2" style={{ color: '#5a4e40', fontSize: '9px' }}>IDIOMAS</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {personaje.idiomas.map((idioma, i) => (
-                      <span key={i} className="hud-label px-2 py-0.5 rounded-sm"
-                        style={{ background: 'rgba(90,64,16,0.08)', border: '1px solid #5a4010', color: '#7a5818', fontSize: '9px' }}>
-                        {idioma}
-                      </span>
-                    ))}
-                  </div>
+              ))}
+            </div>
+
+            {/* Equipo y Crónica */}
+            <div className="space-y-4">
+              {/* Equipo */}
+              <div className="p-4 stone-frame">
+                <span className="font-heading text-[9px] tracking-widest text-stone-500 block mb-2">EQUIPO</span>
+                <div className="space-y-1">
+                  {personaje.equipo.map((item, i) => (
+                    <div key={i} className="flex items-start gap-2 text-xs text-stone-400 font-lore">
+                      <span className="text-[#7a5818]">•</span>
+                      <span>{item}</span>
+                    </div>
+                  ))}
                 </div>
-              )}
-              {/* Historia / Lore */}
+              </div>
+
+              {/* Crónica */}
               {personaje.historia && (
-                <div className="mt-2">
-                  <div className="p-3 border-b" style={{ borderColor: 'rgba(90,64,16,0.2)' }}>
-                    <span className="hud-label" style={{ color: '#5a4010', fontSize: '9px' }}>CRÓNICA</span>
-                  </div>
-                  <div className="lore-box p-3 overflow-y-auto" style={{ maxHeight: '160px' }}>
+                <div className="p-4 stone-frame">
+                  <span className="font-heading text-[9px] tracking-widest text-[#7a5818] block mb-2">CRÓNICA</span>
+                  <div className="lore-box text-[13px] leading-relaxed text-stone-400 overflow-y-auto" style={{ maxHeight: '180px' }}>
                     {personaje.historia}
                   </div>
                 </div>
               )}
             </div>
-          )}
+
+          </div>
+
         </div>
+
       </div>
 
       {/* Modal de edición de fotos */}
@@ -496,7 +527,7 @@ export default function JugadorHUDPage() {
                     { key: 'herido', label: 'HERIDO', desc: 'HP por debajo del 40%', color: '#ff1744' },
                     { key: 'afectado', label: 'AFECTADO', desc: 'Condición grave', color: '#39ff14' },
                     { key: 'inconsciente', label: 'INCONSCIENTE', desc: 'HP = 0', color: '#555' },
-                    { key: 'en_zona', label: personaje.nombre_estado_especial ? personaje.nombre_estado_especial.toUpperCase() : 'EN LA ZONA', desc: 'Estado especial activado', color: '#ffffff' },
+                    { key: 'en_zona', label: personaje.nombre_estado_especial ? personaje.nombre_estado_especial.toUpperCase() : 'ESTADO ESPECIAL', desc: 'Estado especial activado', color: '#ffffff' },
                     { key: 'shock', label: 'SHOCK / FALLO', desc: 'Backfire mágico', color: '#ff6d00' },
                   ].map(estado => {
                     const urlImg = personaje.retratos[estado.key as keyof typeof personaje.retratos];
@@ -586,7 +617,7 @@ function PortraitModule({ estadoRetrato, urlRetrato, nombre, colorAcento, estado
     <motion.div
       key={estadoRetrato}
       animate={isShock ? { x: [0, -6, 6, -4, 4, -2, 2, 0], transition: { repeat: Infinity, duration: 0.35 } } : { x: 0 }}
-      className="relative overflow-hidden w-full h-80"
+      className="relative overflow-hidden w-full h-80 flex-shrink-0"
       style={{
         border: `1px solid ${estadoEspecial ? colorAcento : '#2e2820'}`,
         boxShadow: isZona
@@ -646,89 +677,6 @@ function PortraitModule({ estadoRetrato, urlRetrato, nombre, colorAcento, estado
   );
 }
 
-/* ═══ STAT COMBATE ═══ */
-function StatCombate({ label, value, color }: { label: string; value: string | number; color: string }) {
-  return (
-    <div className="text-center p-2 rounded-sm" style={{ background: `${color}10`, border: `1px solid ${color}30` }}>
-      <div className="hud-label mb-0.5" style={{ color: `${color}99`, fontSize: '7px' }}>{label}</div>
-      <div className="font-heading font-bold" style={{ color, fontSize: '14px' }}>{value}</div>
-    </div>
-  );
-}
-
-/* ═══ ACTION CARD ═══ */
-function ActionCard({ accion, colorAcento }: { accion: AccionPersonaje; colorAcento: string }) {
-  const tipoColor: Record<string, string> = {
-    ataque: '#6b1818', magia: '#243050', reaccion: '#243018', habilidad: '#5a4010', bonus: '#3a4870',
-  };
-  const color = tipoColor[accion.tipo] ?? '#3d3028';
-  const colorBright: Record<string, string> = {
-    ataque: '#8b2020', magia: '#3a4870', reaccion: '#344020', habilidad: '#7a5818', bonus: '#4a607d',
-  };
-  const bright = colorBright[accion.tipo] ?? '#5a4e40';
-
-  return (
-    <motion.div
-      whileHover={{ scale: 1.01, x: 2 }}
-      className="action-btn p-3"
-      style={{ borderColor: color }}
-    >
-      <div className="flex items-center gap-2 mb-1">
-        <div className="w-1 h-5 flex-shrink-0" style={{ background: bright }} />
-        <span className="font-heading text-xs font-bold truncate" style={{ color: bright, letterSpacing: '0.06em' }}>
-          {accion.nombre}
-        </span>
-        {accion.tirada_impactar && (
-          <span className="ml-auto font-heading flex-shrink-0" style={{ color: colorAcento, fontSize: '9px' }}>
-            {accion.tirada_impactar}
-          </span>
-        )}
-      </div>
-      {(accion.danio || accion.alcance || accion.tipo_danio) && (
-        <div className="flex gap-2 ml-3 mb-1">
-          {accion.danio && (
-            <span className="hud-label" style={{ color: '#ff4444', fontSize: '8px' }}>
-              ⚔ {accion.danio} {accion.tipo_danio}
-            </span>
-          )}
-          {accion.alcance && (
-            <span className="hud-label" style={{ color: '#4a607d', fontSize: '8px' }}>
-              📏 {accion.alcance}
-            </span>
-          )}
-        </div>
-      )}
-      {accion.descripcion && (
-        <p className="font-lore ml-3 leading-relaxed" style={{ color: '#5a4e40', fontSize: '12px' }}>
-          {accion.descripcion}
-        </p>
-      )}
-      {accion.cooldown && (
-        <div className="ml-3 mt-1">
-          <span className="hud-label" style={{ color: '#3d5270', fontSize: '8px' }}>🔁 {accion.cooldown}</span>
-        </div>
-      )}
-    </motion.div>
-  );
-}
-
-/* ═══ RASGO CARD ═══ */
-function RasgoCard({ rasgo, color }: { rasgo: RasgoPersonaje; color: string }) {
-  return (
-    <div className="p-3 stone-frame">
-      <div className="flex items-center gap-2 mb-1">
-        <div className="w-1.5 h-1.5 rounded-sm flex-shrink-0" style={{ background: color }} />
-        <span className="font-heading text-xs font-bold" style={{ color, letterSpacing: '0.06em' }}>
-          {rasgo.nombre}
-        </span>
-      </div>
-      <p className="font-lore ml-3.5 leading-relaxed" style={{ color: '#7a6e60', fontSize: '12px' }}>
-        {rasgo.descripcion}
-      </p>
-    </div>
-  );
-}
-
 /* ═══ ESTADO BADGE ═══ */
 function EstadoBadge({ estado }: { estado: EstadoRetrato }) {
   const config: Record<EstadoRetrato, { label: string; color: string }> = {
@@ -752,4 +700,71 @@ function EstadoBadge({ estado }: { estado: EstadoRetrato }) {
       {c.label}
     </span>
   );
+}
+
+/* ═══ ACCION ICON MAPPER (SVGs de alta fidelidad) ═══ */
+function ActionIcon({ name }: { name: string }) {
+  const nm = name.toLowerCase();
+  
+  if (nm.includes('espadazo') || nm.includes('ataque') || nm.includes('daga') || nm.includes('cuchillo') || nm.includes('bastón') || nm.includes('arma')) {
+    return (
+      <svg className="w-5 h-5 text-red-700/80 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <line x1="18" y1="6" x2="6" y2="18"/>
+        <path d="M4 20l2-2-1-1-1 1v2z"/>
+        <path d="M19 5l-4 4 1.5 1.5 4-4L19 5z"/>
+      </svg>
+    );
+  }
+  
+  if (nm.includes('golpe') || nm.includes('aplastamiento') || nm.includes('fuerza') || nm.includes('furia')) {
+    return (
+      <svg className="w-5 h-5 text-red-700/80 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <path d="M12 10V5a2 2 0 0 0-4 0v5"/>
+        <path d="M8 10V7a2 2 0 0 0-4 0v6c0 5 4 9 9 9h3a6 6 0 0 0 6-6v-2a2 2 0 0 0-4 0v1"/>
+        <path d="M16 11V9a2 2 0 0 0-4 0v2"/>
+      </svg>
+    );
+  }
+  
+  if (nm.includes('embestida') || nm.includes('carga') || nm.includes('velocidad') || nm.includes('desplazar') || nm.includes('acción astuta')) {
+    return (
+      <svg className="w-5 h-5 text-red-700/80 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <path d="M18 8h-4l-1-3h-4v2h2v4l-4 2-1 6h2l1-4h3l1 4h2l-1-7 2-4"/>
+        <circle cx="15" cy="4" r="1"/>
+      </svg>
+    );
+  }
+
+  if (nm.includes('devastador') || nm.includes('muerte') || nm.includes('psíquico') || nm.includes('shock') || nm.includes('veneno')) {
+    return (
+      <svg className="w-5 h-5 text-red-700/80 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <path d="M9 10h.01M15 10h.01"/>
+        <path d="M12 2a7 7 0 0 0-7 7c0 3 2.5 5 2.5 7h9c0-2 2.5-4 2.5-7a7 7 0 0 0-7-7z"/>
+        <path d="M10 22h4v-2h-4v2z"/>
+      </svg>
+    );
+  }
+  
+  if (nm.includes('defensa') || nm.includes('escudo') || nm.includes('resistencia') || nm.includes('historia antigua')) {
+    return (
+      <svg className="w-5 h-5 text-red-700/80 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      </svg>
+    );
+  }
+
+  return (
+    <svg className="w-5 h-5 text-red-700/80 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+    </svg>
+  );
+}
+
+/* Helper para formatear tirada de impacto */
+function formatTiradaImpactar(val?: string) {
+  if (!val) return '—';
+  if (val.trim().startsWith('+') || val.trim().startsWith('-')) {
+    return `1d20 ${val.trim()}`;
+  }
+  return val;
 }
