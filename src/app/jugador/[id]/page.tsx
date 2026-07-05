@@ -1,19 +1,91 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { usePersonaje } from '@/hooks/usePersonajes';
+import dynamic from 'next/dynamic';
+import { usePersonaje, usePersonajes } from '@/hooks/usePersonajes';
 import { derivarEstadoRetrato, porcentajeVida, subirRetrato } from '@/lib/db';
 import { EstadoRetrato, CondicionEstado, AccionPersonaje, RasgoPersonaje, EstadisticasBase, formatModificador } from '@/types/character';
 import { CONDICIONES_INFO, ATRIBUTOS_BASE } from '@/lib/constants';
+import { supabase } from '@/lib/supabase/client';
+import { v4 as uuidv4 } from 'uuid';
+
+const SUPABASE_URL = 'https://jdjoxebegpqjaoptnkfm.supabase.co';
+const ANON_KEY     = 'sb_publishable_KIRTGxyYG0O7w-sCeUZRxg_9iTuEUKf';
+
+const RadarHUD = dynamic(() => import('@/components/hud/RadarHUD'), { ssr: false });
 
 export default function JugadorHUDPage() {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
   const { personaje, actualizar } = usePersonaje(id);
+  const { personajes: party } = usePersonajes();
+  
   const [modalFotosOpen, setModalFotosOpen] = useState(false);
+  const [mensajes, setMensajes] = useState<any[]>([]);
+  const [nuevoMensaje, setNuevoMensaje] = useState('');
+  const [chatSender, setChatSender] = useState<'pj' | 'ooc'>('pj');
+  
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  // Cargar mensajes iniciales
+  const cargarMensajes = async () => {
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/mensajes?order=created_at.asc`, {
+        headers: {
+          'apikey': ANON_KEY,
+          'Authorization': `Bearer ${ANON_KEY}`,
+        }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setMensajes(data);
+      }
+    } catch (e) {
+      console.warn('Error loading messages from database, using fallback', e);
+    }
+  };
+
+  // Suscribirse a mensajes en tiempo real
+  useEffect(() => {
+    cargarMensajes();
+
+    if (supabase) {
+      // Suscripción DB
+      const dbChannel = supabase
+        .channel('realtime-mensajes')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'mensajes' }, (payload) => {
+          setMensajes(prev => {
+            if (prev.some(m => m.id === payload.new.id)) return prev;
+            return [...prev, payload.new];
+          });
+        })
+        .subscribe();
+
+      // Suscripción Broadcast (fallback)
+      const bcChannel = supabase
+        .channel('mensajes-broadcast')
+        .on('broadcast', { event: 'nuevo-mensaje' }, (response) => {
+          setMensajes(prev => {
+            if (prev.some(m => m.id === response.payload.id)) return prev;
+            return [...prev, response.payload];
+          });
+        })
+        .subscribe();
+
+      return () => {
+        supabase!.removeChannel(dbChannel);
+        supabase!.removeChannel(bcChannel);
+      };
+    }
+  }, []);
+
+  // Hacer scroll automático al final del chat
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [mensajes]);
 
   if (!personaje) {
     return (
@@ -37,11 +109,57 @@ export default function JugadorHUDPage() {
   const accionesNormales  = personaje.acciones.filter(a => a.estado === 'normal' || a.estado === 'ambos');
   const accionesEspeciales = personaje.acciones.filter(a => a.estado === 'especial' || a.estado === 'ambos');
 
-  // Buscar si hay un rasgo que describa el estado especial
   const rasgoEspecial = personaje.rasgos.find(r => 
     r.nombre.toLowerCase().includes(personaje.nombre_estado_especial?.toLowerCase() || '') ||
     (personaje.nombre_estado_especial?.toLowerCase() || '').includes(r.nombre.toLowerCase())
   );
+
+  const enviarMensaje = async () => {
+    if (!nuevoMensaje.trim()) return;
+
+    const senderName = chatSender === 'pj' ? personaje.nombre : `OOC (${personaje.nombre})`;
+    const senderAvatar = chatSender === 'pj' ? urlRetrato : null;
+
+    const msgId = uuidv4();
+    const msg = {
+      id: msgId,
+      sender_name: senderName,
+      sender_avatar: senderAvatar,
+      content: nuevoMensaje.trim(),
+      created_at: new Date().toISOString()
+    };
+
+    setNuevoMensaje('');
+
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/mensajes`, {
+        method: 'POST',
+        headers: {
+          'apikey': ANON_KEY,
+          'Authorization': `Bearer ${ANON_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify({
+          sender_name: msg.sender_name,
+          sender_avatar: msg.sender_avatar,
+          content: msg.content
+        })
+      });
+
+      if (!res.ok) throw new Error('Database insert failed');
+    } catch (err) {
+      // Fallback local y emitir por broadcast
+      setMensajes(prev => [...prev, msg]);
+      if (supabase) {
+        supabase.channel('mensajes-broadcast').send({
+          type: 'broadcast',
+          event: 'nuevo-mensaje',
+          payload: msg
+        });
+      }
+    }
+  };
 
   return (
     <div className="bg-dungeon min-h-screen flex flex-col relative overflow-hidden">
@@ -123,7 +241,7 @@ export default function JugadorHUDPage() {
       {/* ── Cuerpo principal HUD ── */}
       <div className="flex-1 flex overflow-hidden">
 
-        {/* ═══ COLUMNA IZQUIERDA (Datos, Atributos, Habilidades competentes) ═══ */}
+        {/* ═══ COLUMNA IZQUIERDA (Atributos, Datos, Radar) ═══ */}
         <div className="w-80 flex-shrink-0 flex flex-col gap-3 p-4 border-r overflow-y-auto"
           style={{ borderColor: '#1c1712', background: 'rgba(6,4,2,0.4)' }}>
 
@@ -156,15 +274,15 @@ export default function JugadorHUDPage() {
             {personaje.trasfondo && (
               <div className="flex justify-between">
                 <span className="font-heading text-stone-500">TRASFONDO</span>
-                <span className="font-lore text-stone-400">{personaje.trasfondo}</span>
+                <span className="font-lore text-stone-450">{personaje.trasfondo}</span>
               </div>
             )}
           </div>
 
-          {/* Atributos y Bonificadores (Formato de alta fidelidad) */}
+          {/* Atributos y Bonificadores */}
           <div className="p-3 stone-frame">
             <div className="grid grid-cols-2 gap-3">
-              {/* Columna Izquierda: Atributos y Modificadores */}
+              {/* Modificadores */}
               <div className="space-y-2 pr-2 border-r" style={{ borderColor: 'rgba(90,64,16,0.15)' }}>
                 {ATRIBUTOS_BASE.map(attr => {
                   const val = personaje.estadisticas[attr.key as keyof EstadisticasBase];
@@ -181,7 +299,7 @@ export default function JugadorHUDPage() {
                 })}
               </div>
 
-              {/* Columna Derecha: Bonificadores de Combate */}
+              {/* Bonificadores */}
               <div className="pl-2 flex flex-col justify-between text-[11px] space-y-2">
                 <div>
                   <span className="font-heading text-[8px] tracking-wider text-stone-500 block">BONIFICADOR DE ATAQUE</span>
@@ -193,7 +311,6 @@ export default function JugadorHUDPage() {
                   <span className="font-heading text-base font-bold text-stone-300">+{personaje.bonificador_competencia}</span>
                 </div>
 
-                {/* Tirada para Impactar */}
                 <div className="border-t pt-1.5" style={{ borderColor: 'rgba(90,64,16,0.1)' }}>
                   <span className="font-heading text-[8px] tracking-wider text-stone-500 block">TIRADA PARA IMPACTAR</span>
                   <div className="space-y-0.5 mt-0.5">
@@ -213,9 +330,19 @@ export default function JugadorHUDPage() {
             </div>
           </div>
 
+          {/* Radar Chart (Reintroducido) */}
+          <div className="stone-frame overflow-hidden flex-shrink-0" style={{ minHeight: '260px' }}>
+            <div className="flex items-center justify-between p-2 border-b" style={{ borderColor: '#1c1712' }}>
+              <span className="font-heading text-[8px] tracking-widest text-stone-500">MAPA RADIAL DE VALORES</span>
+            </div>
+            <div style={{ height: '220px' }}>
+              <RadarHUD stats={personaje.estadisticas} color={personaje.color_acento} />
+            </div>
+          </div>
+
           {/* Habilidades competentes */}
           {Object.keys(personaje.habilidades).length > 0 && (
-            <div className="p-3 stone-frame space-y-1.5">
+            <div className="p-3 stone-frame space-y-1.5 flex-shrink-0">
               <p className="font-heading text-[8px] tracking-widest text-stone-500 border-b pb-1 mb-2" style={{ borderColor: 'rgba(90,64,16,0.1)' }}>
                 HABILIDADES COMPETENTES
               </p>
@@ -236,34 +363,13 @@ export default function JugadorHUDPage() {
               </div>
             </div>
           )}
-
-          {/* Salvaciones */}
-          {Object.keys(personaje.salvaciones).length > 0 && (
-            <div className="p-3 stone-frame space-y-1.5">
-              <p className="font-heading text-[8px] tracking-widest text-stone-500 border-b pb-1 mb-2" style={{ borderColor: 'rgba(90,64,16,0.1)' }}>
-                TIRADAS DE SALVACIÓN
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {Object.entries(personaje.salvaciones).map(([attr, bonus]) => (
-                  <div key={attr} className="flex items-center gap-1 px-2 py-0.5 rounded-sm text-[10px]"
-                    style={{ background: 'rgba(42,53,72,0.2)', border: '1px solid rgba(42,53,72,0.4)' }}>
-                    <span className="font-heading text-[9px] text-[#8fa8c8]">{attr.toUpperCase()}</span>
-                    <span className="font-heading font-bold" style={{ color: personaje.color_acento }}>
-                      {bonus >= 0 ? `+${bonus}` : `${bonus}`}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
 
-        {/* ═══ COLUMNA DERECHA (Plaquetas HP/CA, Tablas de Habilidades y Notas) ═══ */}
+        {/* ═══ COLUMNA CENTRAL (HP/CA Shields y Tablas de Acciones) ═══ */}
         <div className="flex-1 flex flex-col gap-4 p-4 overflow-y-auto min-w-0">
 
-          {/* Fila superior: Escudos/Plaquetas de HP y CA */}
+          {/* Escudos/Plaquetas de HP y CA */}
           <div className="flex justify-center gap-6 flex-shrink-0">
-            {/* HP Card */}
             <div className="relative w-28 h-20 bg-stone-950/90 border border-stone-900 rounded-b-xl flex flex-col items-center justify-center shadow-lg"
               style={{ borderTop: `3px solid #8b2020` }}>
               <span className="font-heading text-[9px] tracking-widest text-stone-500">HP MÁXIMO</span>
@@ -271,7 +377,6 @@ export default function JugadorHUDPage() {
               <span className="text-[9px] text-stone-500">/ {personaje.hp_max} PV</span>
             </div>
 
-            {/* CA Normal */}
             <div className="relative w-28 h-20 bg-stone-950/90 border border-stone-900 rounded-b-xl flex flex-col items-center justify-center shadow-lg"
               style={{ borderTop: `3px solid #7a5818` }}>
               <span className="font-heading text-[9px] tracking-widest text-stone-500">CA NORMAL</span>
@@ -279,7 +384,6 @@ export default function JugadorHUDPage() {
               <span className="text-[8px] text-stone-500">ARMADURA</span>
             </div>
 
-            {/* CA Especial */}
             {personaje.ca_especial && (
               <div className="relative w-28 h-20 bg-stone-950/90 border border-stone-900 rounded-b-xl flex flex-col items-center justify-center shadow-lg"
                 style={{ borderTop: `3px solid #a62626` }}>
@@ -292,10 +396,10 @@ export default function JugadorHUDPage() {
             )}
           </div>
 
-          {/* Tablas de Habilidades/Acciones de Alta Fidelidad */}
+          {/* Tablas de Habilidades/Acciones */}
           <div className="stone-frame p-5 space-y-6">
             
-            {/* 1. HABILIDADES - ESTADO NORMAL */}
+            {/* 1. NORMAL */}
             <div>
               <div className="flex items-center justify-between mb-4 border-b pb-2" style={{ borderColor: 'rgba(90,64,16,0.2)' }}>
                 <h3 className="font-heading text-xs font-bold tracking-widest text-[#b8a070] flex items-center gap-2">
@@ -303,7 +407,7 @@ export default function JugadorHUDPage() {
                 </h3>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse" style={{ minWidth: '550px' }}>
+                <table className="w-full text-left border-collapse" style={{ minWidth: '500px' }}>
                   <thead>
                     <tr className="border-b border-stone-800 text-[10px] uppercase tracking-wider text-stone-500 font-heading">
                       <th className="py-2.5 px-3 border border-stone-900/60">Habilidad</th>
@@ -316,22 +420,18 @@ export default function JugadorHUDPage() {
                   <tbody className="divide-y divide-stone-900/40">
                     {accionesNormales.map(accion => (
                       <tr key={accion.id} className="hover:bg-white/5 transition-colors">
-                        {/* Nombre + Icono */}
                         <td className="py-3 px-3 font-heading text-stone-200 text-xs border border-stone-900/60">
                           <div className="flex items-center gap-3">
                             <ActionIcon name={accion.nombre} />
                             <span className="tracking-wide uppercase font-bold text-[11px]">{accion.nombre}</span>
                           </div>
                         </td>
-                        {/* Tirada para Impactar */}
                         <td className="py-3 px-3 text-center font-heading font-black text-stone-300 text-xs border border-stone-900/60">
                           {formatTiradaImpactar(accion.tirada_impactar)}
                         </td>
-                        {/* Alcance */}
                         <td className="py-3 px-3 text-center font-lore text-stone-400 text-xs border border-stone-900/60">
                           {accion.alcance || '—'}
                         </td>
-                        {/* Daño */}
                         <td className="py-3 px-3 text-center border border-stone-900/60">
                           {accion.danio ? (
                             <div className="font-heading text-xs">
@@ -342,7 +442,6 @@ export default function JugadorHUDPage() {
                             </div>
                           ) : '—'}
                         </td>
-                        {/* Efecto */}
                         <td className="py-3 px-3 font-lore text-stone-400 text-xs leading-relaxed border border-stone-900/60">
                           {accion.descripcion}
                         </td>
@@ -353,7 +452,7 @@ export default function JugadorHUDPage() {
               </div>
             </div>
 
-            {/* 2. HABILIDADES - ESTADO ESPECIAL */}
+            {/* 2. ESPECIAL */}
             {personaje.nombre_estado_especial && (
               <div className="pt-4 border-t border-stone-900/60">
                 <div className="flex items-center justify-between mb-2 pb-2">
@@ -369,7 +468,7 @@ export default function JugadorHUDPage() {
                 )}
 
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse" style={{ minWidth: '550px' }}>
+                  <table className="w-full text-left border-collapse" style={{ minWidth: '500px' }}>
                     <thead>
                       <tr className="border-b border-stone-800 text-[10px] uppercase tracking-wider text-stone-500 font-heading">
                         <th className="py-2.5 px-3 border border-stone-900/60">Habilidad</th>
@@ -414,25 +513,13 @@ export default function JugadorHUDPage() {
                 </div>
               </div>
             )}
-
-            {/* 3. NOTAS DEL ESTADO ESPECIAL */}
-            {personaje.nombre_estado_especial && (
-              <div className="mt-4 pt-3 border-t border-stone-900/60 text-center">
-                <span className="font-heading text-[10px] tracking-widest text-[#7a6e60] block mb-1">NOTAS</span>
-                <p className="font-lore text-xs text-stone-400 leading-relaxed italic">
-                  Puedes activar el {personaje.nombre_estado_especial} como acción adicional.
-                  Dura 1 minuto o hasta quedar inconsciente.
-                </p>
-              </div>
-            )}
           </div>
 
-          {/* Rasgos y Crónica/Historia */}
+          {/* Rasgos y Crónica */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            
             {/* Rasgos */}
             <div className="space-y-3">
-              <span className="font-heading text-[10px] tracking-widest text-stone-500 block">RASGOS RACIALES / DE CLASE</span>
+              <span className="font-heading text-[10px] tracking-widest text-stone-500 block">RASGOS RACIALES / CLASE</span>
               {personaje.rasgos.map(rasgo => (
                 <div key={rasgo.id} className="p-4 stone-frame flex gap-3.5 items-start">
                   <div className="flex-shrink-0 w-8 h-8 rounded-full bg-stone-900/60 border border-stone-900/60 flex items-center justify-center text-[#7a5818]">
@@ -453,9 +540,8 @@ export default function JugadorHUDPage() {
               ))}
             </div>
 
-            {/* Equipo y Crónica */}
+            {/* Equipo / Crónica */}
             <div className="space-y-4">
-              {/* Equipo */}
               <div className="p-4 stone-frame">
                 <span className="font-heading text-[9px] tracking-widest text-stone-500 block mb-2">EQUIPO</span>
                 <div className="space-y-1">
@@ -468,7 +554,6 @@ export default function JugadorHUDPage() {
                 </div>
               </div>
 
-              {/* Crónica */}
               {personaje.historia && (
                 <div className="p-4 stone-frame">
                   <span className="font-heading text-[9px] tracking-widest text-[#7a5818] block mb-2">CRÓNICA</span>
@@ -478,7 +563,135 @@ export default function JugadorHUDPage() {
                 </div>
               )}
             </div>
+          </div>
+        </div>
 
+        {/* ═══ COLUMNA DERECHA (Lista de Grupo Online y Chat de Campaña) ═══ */}
+        <div className="w-80 flex-shrink-0 flex flex-col gap-3 p-4 border-l overflow-hidden"
+          style={{ borderColor: '#1c1712', background: 'rgba(6,4,2,0.45)' }}>
+          
+          {/* Lista de Grupo (Party list) */}
+          <div className="flex flex-col flex-1 min-h-[220px] overflow-hidden">
+            <span className="font-heading text-[9px] tracking-widest text-stone-500 block mb-2">GRUPO ONLINE (TIEMPO REAL)</span>
+            <div className="space-y-2 overflow-y-auto pr-1 flex-1">
+              {party.map(p => {
+                const pEstado = derivarEstadoRetrato(p) as EstadoRetrato;
+                const pUrl = p.retratos[pEstado] ?? p.retratos.base ?? null;
+                const pPct = porcentajeVida(p.hp, p.hp_max);
+                
+                return (
+                  <div key={p.id} className="flex items-center gap-2.5 p-2 rounded-sm bg-black/30 border border-stone-900/60 hover:bg-black/50 transition-colors">
+                    <div className="relative w-10 h-10 rounded-sm overflow-hidden flex-shrink-0 border"
+                      style={{ borderColor: p.estado_especial ? p.color_acento : '#2e2820' }}>
+                      {pUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={pUrl} alt={p.nombre} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full bg-stone-900 flex items-center justify-center text-xs text-stone-600 font-heading">
+                          {p.nombre[0]}
+                        </div>
+                      )}
+                      {p.conectado && (
+                        <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-[#76ff03] rounded-full border border-black" title="Online" />
+                      )}
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-baseline">
+                        <span className="font-heading text-[10px] text-stone-200 truncate font-bold uppercase tracking-wider">{p.nombre}</span>
+                        <span className="text-[8px] text-stone-500 font-semibold">{p.clase}</span>
+                      </div>
+                      
+                      {/* Barra de Vida */}
+                      <div className="w-full bg-stone-950 h-1.5 rounded-sm overflow-hidden mt-1 border border-stone-900">
+                        <div className="h-full transition-all duration-300"
+                          style={{
+                            width: `${pPct}%`,
+                            background: p.hp <= 0 ? '#333' : pPct < 40 ? '#8b2020' : '#384828',
+                          }} />
+                      </div>
+                      
+                      <div className="flex justify-between text-[8px] text-stone-500 mt-0.5">
+                        <span>{p.hp}/{p.hp_max} PV</span>
+                        <span className="font-heading text-[7px]"
+                          style={{
+                            color: p.hp <= 0 ? '#ff1744' : p.estado_especial ? p.color_acento : '#76ff03'
+                          }}>
+                          {p.hp <= 0 ? 'CAÍDO' : p.estado_especial ? (p.nombre_estado_especial ? p.nombre_estado_especial.split(' ')[0] || 'ESPECIAL' : 'ESPECIAL') : 'VIVO'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Chat de Campaña (Realtime) */}
+          <div className="flex flex-col h-[320px] stone-frame bg-stone-950/60 overflow-hidden">
+            <div className="p-2.5 border-b flex items-center justify-between flex-shrink-0" style={{ borderColor: 'rgba(90,64,16,0.15)' }}>
+              <span className="font-heading text-[9px] tracking-widest text-[#b8a070]">CHAT DE CAMPAÑA</span>
+              <select
+                value={chatSender}
+                onChange={e => setChatSender(e.target.value as any)}
+                className="bg-stone-900 text-stone-400 font-heading text-[8px] tracking-wider border border-stone-800 rounded-sm px-1 py-0.5 cursor-pointer outline-none"
+              >
+                <option value="pj">{personaje.nombre.toUpperCase()}</option>
+                <option value="ooc">FUERA DE ROL</option>
+              </select>
+            </div>
+
+            {/* Log de Mensajes */}
+            <div className="flex-1 overflow-y-auto p-2.5 space-y-2">
+              {mensajes.map((m, idx) => {
+                const esPj = m.sender_name === personaje.nombre;
+                const esDm = m.sender_name === 'DM' || m.sender_name === 'Narrador';
+                
+                return (
+                  <div key={m.id || idx} className="flex gap-2 items-start text-xs font-lore">
+                    {m.sender_avatar ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={m.sender_avatar} alt={m.sender_name} className="w-6 h-6 rounded-sm object-cover flex-shrink-0 border border-stone-800" />
+                    ) : (
+                      <div className="w-6 h-6 rounded-sm bg-stone-900 flex items-center justify-center text-[9px] font-heading border border-stone-800 flex-shrink-0 text-stone-500">
+                        {esDm ? '👑' : m.sender_name[0]?.toUpperCase()}
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="font-heading font-bold text-[9px] tracking-wide"
+                          style={{ color: esDm ? '#9a7020' : esPj ? personaje.color_acento : '#7a6e60' }}>
+                          {m.sender_name}
+                        </span>
+                        <span className="text-[7px] text-stone-600">
+                          {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      <p className="text-stone-300 leading-normal mt-0.5 font-lore break-all">{m.content}</p>
+                    </div>
+                  </div>
+                );
+              })}
+              <div ref={chatEndRef} />
+            </div>
+
+            {/* Input para escribir */}
+            <div className="p-2 border-t flex gap-2 flex-shrink-0" style={{ borderColor: 'rgba(90,64,16,0.15)' }}>
+              <input
+                type="text"
+                value={nuevoMensaje}
+                onChange={e => setNuevoMensaje(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') enviarMensaje(); }}
+                placeholder="Escribe un mensaje..."
+                className="flex-1 bg-stone-900 border border-stone-800 rounded-sm text-xs px-2 py-1.5 text-stone-200 placeholder-stone-600 outline-none"
+              />
+              <button
+                onClick={enviarMensaje}
+                className="px-2.5 py-1.5 rounded-sm font-heading text-[10px] text-stone-300 bg-stone-900 hover:bg-stone-800 border border-stone-800 cursor-pointer"
+              >
+                ENVIAR
+              </button>
+            </div>
           </div>
 
         </div>
