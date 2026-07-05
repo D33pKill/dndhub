@@ -59,7 +59,9 @@ const personajes = [
       'Ventaja en salvaciones contra veneno y muerte.',
       'La magia reemplaza tus fluidos vitales.'
     ],
-    desventajas: [],
+    desventajas: [
+      'Ancla Psíquica: Desventaja contra Asustado si estás separado de tu arma vinculada.'
+    ],
     rasgos: [
       {
         id: 'rasgo-la-masa-1',
@@ -70,6 +72,11 @@ const personajes = [
         id: 'rasgo-la-masa-2',
         nombre: 'Estado ENOJADO',
         descripcion: 'Puedes activar el estado ENOJADO como acción adicional. Dura 1 minuto o hasta que quedes inconsciente. Mientras estás enojado: ventaja en pruebas y salvaciones de Fuerza, resistencia a daño contundente, cortante y perforante no mágico. El daño aumenta en +2. Tirada para impactar: 1d20 + 7. CA se reduce a 16.'
+      },
+      {
+        id: 'rasgo-la-masa-3',
+        nombre: 'Ancla Psíquica (Vínculo con el Arma)',
+        descripcion: 'Tu arma es tu única seguridad. Si pasas más de 1 minuto separado de tu arma vinculada a más de 30 pies, entras en pánico y sufres desventaja en salvaciones contra el estado Asustado (Frightened) hasta que la invoques.'
       }
     ],
     acciones: [
