@@ -5,8 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { usePersonaje } from '@/hooks/usePersonajes';
-import { derivarEstadoRetrato, porcentajeVida } from '@/lib/db';
-import { EstadoRetrato, CondicionEstado, AccionPersonaje, RasgoPersonaje, calcularModificador } from '@/types/character';
+import { derivarEstadoRetrato, porcentajeVida, subirRetrato } from '@/lib/db';
+import { EstadoRetrato, CondicionEstado, AccionPersonaje, RasgoPersonaje } from '@/types/character';
 import { CONDICIONES_INFO, ATRIBUTOS_BASE } from '@/lib/constants';
 
 const RadarHUD = dynamic(() => import('@/components/hud/RadarHUD'), { ssr: false });
@@ -15,8 +15,9 @@ export default function JugadorHUDPage() {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
-  const { personaje } = usePersonaje(id);
+  const { personaje, actualizar } = usePersonaje(id);
   const [tabDer, setTabDer] = useState<'acciones' | 'rasgos' | 'equipo'>('acciones');
+  const [modalFotosOpen, setModalFotosOpen] = useState(false);
 
   if (!personaje) {
     return (
@@ -121,124 +122,9 @@ export default function JugadorHUDPage() {
       {/* ── Cuerpo principal HUD ── */}
       <div className="flex-1 flex overflow-hidden">
 
-        {/* ═══ COLUMNA IZQUIERDA ═══ */}
-        <div className="w-64 flex-shrink-0 flex flex-col gap-2 p-3 border-r"
-          style={{ borderColor: '#1c1712' }}>
-
-          {/* Retrato */}
-          <PortraitModule
-            estadoRetrato={estadoRetrato}
-            urlRetrato={urlRetrato}
-            nombre={personaje.nombre}
-            colorAcento={personaje.color_acento}
-            estadoEspecial={personaje.estado_especial}
-          />
-
-          {/* HP */}
-          <div className="p-3 stone-frame">
-            <div className="flex items-center justify-between mb-2">
-              <span className="hud-label" style={{ color: '#6b1818', fontSize: '9px' }}>PUNTOS DE GOLPE</span>
-              <div className="flex items-baseline gap-1">
-                <span className="font-heading font-bold" style={{ color: '#8b2020', fontSize: '16px' }}>
-                  {personaje.hp}
-                </span>
-                <span className="font-heading" style={{ color: '#3d3028', fontSize: '10px' }}>
-                  /{personaje.hp_max}
-                </span>
-              </div>
-            </div>
-            <div className="glow-bar-track h-4 relative">
-              <motion.div
-                className="glow-bar-fill h-full bar-hp"
-                animate={{ width: `${hpPct}%` }}
-                transition={{ type: 'spring', stiffness: 80, damping: 20 }}
-              />
-              <span className="absolute right-2 top-0 bottom-0 flex items-center font-heading"
-                style={{ color: 'rgba(180,160,120,0.25)', fontSize: '9px' }}>
-                {Math.round(hpPct)}%
-              </span>
-            </div>
-          </div>
-
-          {/* Combate — CA, velocidad, iniciativa */}
-          <div className="p-3 stone-frame">
-            <p className="hud-label mb-2" style={{ color: '#5a4e40', fontSize: '9px' }}>COMBATE</p>
-            <div className="grid grid-cols-3 gap-2">
-              <StatCombate
-                label={personaje.estado_especial && personaje.ca_especial ? 'CA*' : 'CA'}
-                value={personaje.estado_especial && personaje.ca_especial
-                  ? personaje.ca_especial
-                  : personaje.ca}
-                color="#7a5818"
-              />
-              <StatCombate label="VEL" value={`${personaje.velocidad}p`} color="#3a4870" />
-              <StatCombate
-                label="INIC"
-                value={personaje.iniciativa >= 0 ? `+${personaje.iniciativa}` : `${personaje.iniciativa}`}
-                color="#344020"
-              />
-            </div>
-            {personaje.bonificador_ataque > 0 && (
-              <div className="flex gap-2 mt-2">
-                <StatCombate
-                  label="BON.ATK"
-                  value={`+${personaje.bonificador_ataque}`}
-                  color="#6b1818"
-                />
-                {personaje.bonificador_magia > 0 && (
-                  <StatCombate
-                    label="BON.MAG"
-                    value={`+${personaje.bonificador_magia}`}
-                    color="#3a4870"
-                  />
-                )}
-              </div>
-            )}
-            {personaje.dado_especial && (
-              <div className="mt-2 px-2 py-1 text-center rounded-sm"
-                style={{ background: 'rgba(107,24,24,0.1)', border: '1px solid #3d1010' }}>
-                <span className="hud-label" style={{ color: '#8b2020', fontSize: '8px' }}>
-                  ATK FURTIVO: {personaje.dado_especial}
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* Condiciones activas */}
-          <AnimatePresence>
-            {personaje.condiciones_activas.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="p-3 stone-frame"
-              >
-                <p className="hud-label mb-2" style={{ color: '#5a4e40', fontSize: '9px' }}>AFLICCIONES</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {personaje.condiciones_activas.map(cond => (
-                    <motion.span
-                      key={cond}
-                      initial={{ scale: 0, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      exit={{ scale: 0, opacity: 0 }}
-                      className="badge-condicion"
-                      style={{
-                        color: CONDICIONES_INFO[cond as CondicionEstado].color,
-                        borderColor: CONDICIONES_INFO[cond as CondicionEstado].color,
-                        background: `${CONDICIONES_INFO[cond as CondicionEstado].color}12`,
-                      }}
-                    >
-                      {CONDICIONES_INFO[cond as CondicionEstado].nombre}
-                    </motion.span>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        {/* ═══ COLUMNA CENTRAL ═══ */}
-        <div className="flex-1 flex flex-col gap-2 p-3 min-w-0 overflow-y-auto">
+        {/* ═══ COLUMNA IZQUIERDA (Antes Central) ═══ */}
+        <div className="w-80 flex-shrink-0 flex flex-col gap-2 p-3 border-r overflow-y-auto"
+          style={{ borderColor: '#1c1712', background: 'rgba(6,4,2,0.35)' }}>
 
           {/* Radar de atributos */}
           <div className="stone-frame overflow-hidden" style={{ minHeight: '280px' }}>
@@ -258,7 +144,7 @@ export default function JugadorHUDPage() {
           {Object.keys(personaje.habilidades).length > 0 && (
             <div className="p-3 stone-frame">
               <p className="hud-label mb-2" style={{ color: '#5a4e40', fontSize: '9px' }}>COMPETENCIAS</p>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+              <div className="grid grid-cols-1 gap-y-1">
                 {Object.entries(personaje.habilidades)
                   .sort((a, b) => b[1].bonus - a[1].bonus)
                   .map(([habilidad, entrada]) => (
@@ -308,7 +194,7 @@ export default function JugadorHUDPage() {
 
           {/* Ventajas / Desventajas */}
           {(personaje.ventajas.length > 0 || personaje.desventajas.length > 0) && (
-            <div className="grid grid-cols-2 gap-2">
+            <div className="flex flex-col gap-2">
               {personaje.ventajas.length > 0 && (
                 <div className="p-3 stone-frame" style={{ borderColor: '#243018' }}>
                   <p className="hud-label mb-2" style={{ color: '#384828', fontSize: '9px' }}>VIRTUDES</p>
@@ -316,7 +202,7 @@ export default function JugadorHUDPage() {
                     {personaje.ventajas.map((v, i) => (
                       <div key={i} className="flex items-start gap-2"
                         style={{ color: '#7a6e60', fontSize: '12px', fontFamily: 'Crimson Pro, serif' }}>
-                        <div className="w-1 h-1 flex-shrink-0 mt-1.5" style={{ background: '#344020' }} />
+                        <div className="w-1.5 h-1.5 flex-shrink-0 mt-1.5" style={{ background: '#344020' }} />
                         {v}
                       </div>
                     ))}
@@ -330,7 +216,7 @@ export default function JugadorHUDPage() {
                     {personaje.desventajas.map((d, i) => (
                       <div key={i} className="flex items-start gap-2"
                         style={{ color: '#7a6e60', fontSize: '12px', fontFamily: 'Crimson Pro, serif' }}>
-                        <div className="w-1 h-1 flex-shrink-0 mt-1.5" style={{ background: '#4a1010' }} />
+                        <div className="w-1.5 h-1.5 flex-shrink-0 mt-1.5" style={{ background: '#4a1010' }} />
                         {d}
                       </div>
                     ))}
@@ -339,6 +225,121 @@ export default function JugadorHUDPage() {
               )}
             </div>
           )}
+        </div>
+
+        {/* ═══ COLUMNA CENTRAL (Antes Izquierda) ═══ */}
+        <div className="flex-1 flex flex-col gap-2 p-3 min-w-0 overflow-y-auto">
+          
+          {/* Fila superior: Retrato y Estadísticas de HP/Combate lado a lado */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 flex-shrink-0">
+            {/* Retrato */}
+            <PortraitModule
+              estadoRetrato={estadoRetrato}
+              urlRetrato={urlRetrato}
+              nombre={personaje.nombre}
+              colorAcento={personaje.color_acento}
+              estadoEspecial={personaje.estado_especial}
+              onEditPhotos={() => setModalFotosOpen(true)}
+            />
+
+            {/* Vitales, Combate */}
+            <div className="flex flex-col gap-2 justify-between">
+              {/* HP */}
+              <div className="p-4 stone-frame flex-1 flex flex-col justify-center">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="hud-label" style={{ color: '#6b1818', fontSize: '9px' }}>PUNTOS DE GOLPE</span>
+                  <div className="flex items-baseline gap-1">
+                    <span className="font-heading font-bold" style={{ color: '#8b2020', fontSize: '18px' }}>
+                      {personaje.hp}
+                    </span>
+                    <span className="font-heading" style={{ color: '#3d3028', fontSize: '11px' }}>
+                      /{personaje.hp_max}
+                    </span>
+                  </div>
+                </div>
+                <div className="glow-bar-track h-5 relative">
+                  <motion.div
+                    className="glow-bar-fill h-full bar-hp"
+                    animate={{ width: `${hpPct}%` }}
+                    transition={{ type: 'spring', stiffness: 80, damping: 20 }}
+                  />
+                  <span className="absolute right-2 top-0 bottom-0 flex items-center font-heading"
+                    style={{ color: 'rgba(180,160,120,0.25)', fontSize: '9px' }}>
+                    {Math.round(hpPct)}%
+                  </span>
+                </div>
+              </div>
+
+              {/* Combate — CA, velocidad, iniciativa */}
+              <div className="p-4 stone-frame flex-1 flex flex-col justify-center">
+                <p className="hud-label mb-2" style={{ color: '#5a4e40', fontSize: '9px' }}>COMBATE</p>
+                <div className="grid grid-cols-3 gap-2">
+                  <StatCombate
+                    label={personaje.estado_especial && personaje.ca_especial ? 'CA*' : 'CA'}
+                    value={personaje.estado_especial && personaje.ca_especial
+                      ? personaje.ca_especial
+                      : personaje.ca}
+                    color="#7a5818"
+                  />
+                  <StatCombate label="VEL" value={`${personaje.velocidad}p`} color="#3a4870" />
+                  <StatCombate
+                    label="INIC"
+                    value={personaje.iniciativa >= 0 ? `+${personaje.iniciativa}` : `${personaje.iniciativa}`}
+                    color="#344020"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Fila inferior: Bonificaciones adicionales y Afligidos */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {/* Bonificaciones y Datos */}
+            <div className="p-3 stone-frame space-y-2">
+              <p className="hud-label" style={{ color: '#5a4e40', fontSize: '9px' }}>BONIFICADORES D&D</p>
+              <div className="grid grid-cols-3 gap-2">
+                <StatCombate label="COMPET." value={`+${personaje.bonificador_competencia}`} color="#7a5818" />
+                <StatCombate label="ATAQUE" value={`+${personaje.bonificador_ataque}`} color="#6b1818" />
+                <StatCombate label="MAGIA" value={`+${personaje.bonificador_magia}`} color="#3a4870" />
+              </div>
+              {personaje.dado_especial && (
+                <div className="px-2 py-1 text-center rounded-sm"
+                  style={{ background: 'rgba(107,24,24,0.1)', border: '1px solid #3d1010' }}>
+                  <span className="hud-label" style={{ color: '#8b2020', fontSize: '9px' }}>
+                    DADO ADICIONAL: {personaje.dado_especial}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Condiciones activas (Afligidos) */}
+            <div className="p-3 stone-frame flex flex-col justify-center">
+              <p className="hud-label mb-2" style={{ color: '#5a4e40', fontSize: '9px' }}>AFLICCIONES / CONDICIONES</p>
+              {personaje.condiciones_activas.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {personaje.condiciones_activas.map(cond => (
+                    <motion.span
+                      key={cond}
+                      initial={{ scale: 0, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      className="badge-condicion"
+                      style={{
+                        color: CONDICIONES_INFO[cond as CondicionEstado].color,
+                        borderColor: CONDICIONES_INFO[cond as CondicionEstado].color,
+                        background: `${CONDICIONES_INFO[cond as CondicionEstado].color}12`,
+                        fontSize: '9px',
+                        padding: '2px 6px',
+                      }}
+                    >
+                      {CONDICIONES_INFO[cond as CondicionEstado].nombre}
+                    </motion.span>
+                  ))}
+                </div>
+              ) : (
+                <span className="text-xs" style={{ color: '#3d3028' }}>Sin aflicciones activas.</span>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* ═══ COLUMNA DERECHA ═══ */}
@@ -452,17 +453,131 @@ export default function JugadorHUDPage() {
           )}
         </div>
       </div>
+
+      {/* Modal de edición de fotos */}
+      <AnimatePresence>
+        {modalFotosOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 15 }}
+              className="w-full max-w-xl stone-frame overflow-hidden flex flex-col"
+              style={{ maxHeight: '85vh', background: '#0e0b07' }}
+            >
+              {/* Header del modal */}
+              <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'rgba(90,64,16,0.2)' }}>
+                <span className="font-heading text-sm font-bold" style={{ color: personaje.color_acento, letterSpacing: '0.1em' }}>
+                  GESTIONAR RETRATOS
+                </span>
+                <button
+                  onClick={() => setModalFotosOpen(false)}
+                  className="hud-label cursor-pointer hover:opacity-70 text-xs"
+                  style={{ color: '#8b2020' }}
+                >
+                  CERRAR ✕
+                </button>
+              </div>
+
+              {/* Lista de estados */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                <p className="text-xs" style={{ color: '#7a6e60' }}>
+                  Sube imágenes específicas para cada estado del personaje. El estado base es obligatorio, los demás son opcionales (si no los subes, se usará la imagen base).
+                </p>
+
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { key: 'base', label: 'ESTADO BASE', desc: 'Normal, HP > 40%', color: '#76ff03' },
+                    { key: 'herido', label: 'HERIDO', desc: 'HP por debajo del 40%', color: '#ff1744' },
+                    { key: 'afectado', label: 'AFECTADO', desc: 'Condición grave', color: '#39ff14' },
+                    { key: 'inconsciente', label: 'INCONSCIENTE', desc: 'HP = 0', color: '#555' },
+                    { key: 'en_zona', label: 'EN LA ZONA', desc: 'Estado especial activado', color: '#ffffff' },
+                    { key: 'shock', label: 'SHOCK / FALLO', desc: 'Backfire mágico', color: '#ff6d00' },
+                  ].map(estado => {
+                    const urlImg = personaje.retratos[estado.key as keyof typeof personaje.retratos];
+                    return (
+                      <div key={estado.key} className="rounded-sm overflow-hidden flex flex-col" style={{ border: `1px solid ${estado.color}25`, background: 'rgba(6,4,2,0.6)' }}>
+                        <div className="relative h-24 bg-black/40 flex items-center justify-center overflow-hidden">
+                          {urlImg ? (
+                            <>
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={urlImg} alt={estado.label} className="w-full h-full object-cover" />
+                              <button
+                                onClick={() => {
+                                  const nuevosRetratos = { ...personaje.retratos };
+                                  delete nuevosRetratos[estado.key as keyof typeof nuevosRetratos];
+                                  actualizar({ retratos: nuevosRetratos });
+                                }}
+                                disabled={estado.key === 'base'}
+                                className="absolute top-1 right-1 w-5 h-5 bg-black/70 rounded-sm hover:bg-red-900/90 text-white text-[10px] flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                                title="Eliminar retrato"
+                              >
+                                ✕
+                              </button>
+                            </>
+                          ) : (
+                            <div className="text-center opacity-35">
+                              <svg className="mx-auto" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={estado.color} strokeWidth="1">
+                                <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21,15 16,10 5,21"/>
+                              </svg>
+                              <span style={{ fontSize: '8px', color: estado.color }}>SIN RETRATO</span>
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="p-2 flex flex-col flex-1">
+                          <span className="font-heading font-bold" style={{ color: estado.color, fontSize: '9px', letterSpacing: '0.05em' }}>
+                            {estado.label}
+                          </span>
+                          <span className="text-[10px] mb-2" style={{ color: '#5a4e40' }}>{estado.desc}</span>
+                          
+                          <label className="mt-auto block text-center hud-label py-1 rounded-sm cursor-pointer hover:opacity-85 transition-opacity"
+                            style={{ background: `${estado.color}15`, border: `1px solid ${estado.color}40`, color: estado.color, fontSize: '9px' }}>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  try {
+                                    const url = await subirRetrato(personaje.id, estado.key, file);
+                                    actualizar({ retratos: { ...personaje.retratos, [estado.key]: url } });
+                                  } catch (err) {
+                                    console.error('Error al subir retrato:', err);
+                                  }
+                                }
+                              }}
+                            />
+                            {urlImg ? 'CAMBIAR' : 'SUBIR'}
+                          </label>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
 /* ═══ PORTRAIT MODULE ═══ */
-function PortraitModule({ estadoRetrato, urlRetrato, nombre, colorAcento, estadoEspecial }: {
+function PortraitModule({ estadoRetrato, urlRetrato, nombre, colorAcento, estadoEspecial, onEditPhotos }: {
   estadoRetrato: EstadoRetrato;
   urlRetrato: string | null;
   nombre: string;
   colorAcento: string;
   estadoEspecial: boolean;
+  onEditPhotos: () => void;
 }) {
   const isZona   = estadoRetrato === 'en_zona';
   const isShock  = estadoRetrato === 'shock';
@@ -471,9 +586,8 @@ function PortraitModule({ estadoRetrato, urlRetrato, nombre, colorAcento, estado
     <motion.div
       key={estadoRetrato}
       animate={isShock ? { x: [0, -6, 6, -4, 4, -2, 2, 0], transition: { repeat: Infinity, duration: 0.35 } } : { x: 0 }}
-      className="relative overflow-hidden"
+      className="relative overflow-hidden w-full h-80"
       style={{
-        height: '200px',
         border: `1px solid ${estadoEspecial ? colorAcento : '#2e2820'}`,
         boxShadow: isZona
           ? `0 0 20px ${colorAcento}60, 0 0 40px ${colorAcento}30`
@@ -510,8 +624,23 @@ function PortraitModule({ estadoRetrato, urlRetrato, nombre, colorAcento, estado
         />
       )}
 
-      <div className="absolute bottom-0 left-0 right-0 p-2 z-10">
+      <div className="absolute bottom-0 left-0 right-0 p-2 z-10 flex items-center justify-between"
+        style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.95), transparent)' }}>
         <EstadoBadge estado={estadoRetrato} />
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onEditPhotos();
+          }}
+          className="hud-label px-2.5 py-1 rounded-sm cursor-pointer text-[10px] hover:scale-105 transition-all"
+          style={{
+            background: 'rgba(12,10,7,0.9)',
+            border: `1px solid ${colorAcento}a0`,
+            color: colorAcento,
+          }}
+        >
+          📷 RETRATOS
+        </button>
       </div>
     </motion.div>
   );
