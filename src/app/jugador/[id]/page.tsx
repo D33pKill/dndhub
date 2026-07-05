@@ -496,7 +496,7 @@ export default function JugadorHUDPage() {
                     { key: 'herido', label: 'HERIDO', desc: 'HP por debajo del 40%', color: '#ff1744' },
                     { key: 'afectado', label: 'AFECTADO', desc: 'Condición grave', color: '#39ff14' },
                     { key: 'inconsciente', label: 'INCONSCIENTE', desc: 'HP = 0', color: '#555' },
-                    { key: 'en_zona', label: 'EN LA ZONA', desc: 'Estado especial activado', color: '#ffffff' },
+                    { key: 'en_zona', label: personaje.nombre_estado_especial ? personaje.nombre_estado_especial.toUpperCase() : 'EN LA ZONA', desc: 'Estado especial activado', color: '#ffffff' },
                     { key: 'shock', label: 'SHOCK / FALLO', desc: 'Backfire mágico', color: '#ff6d00' },
                   ].map(estado => {
                     const urlImg = personaje.retratos[estado.key as keyof typeof personaje.retratos];
