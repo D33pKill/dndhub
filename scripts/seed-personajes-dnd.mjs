@@ -3,6 +3,7 @@
  * - La Masa (Fighter / Eldritch Knight)
  * - Iluso (Lirio) (Rogue / Thief)
  * - Valerius Vallis (Sorcerer / Wild Magic)
+ * - Morgan Nurthe (Caballero / Berserker)
  */
 
 const SUPABASE_URL = 'https://jdjoxebegpqjaoptnkfm.supabase.co';
@@ -522,10 +523,134 @@ const personajes = [
       'Paquete de erudito (libro, tinta, pluma)',
       'Monedas: 15 PO'
     ],
-    idiomas: ['Común', 'Infernal', 'Élfico (Alto Asteriano)'],
+    idiomas: ['Común', 'Élfico', 'Infernal'],
     historia: 'Nacido en el alto distrito dentro de la prestigiosa familia Vallis, la vida de Valerius cambió drásticamente a los 18 años al despertar su indómita magia salvaje. Descubrió que su propio padre lo había ofrecido al Archidiablo Mephistopheles a cambio de riquezas. Tras escenificar su muerte, fue arrojado a las calles de los barrios bajos, donde aprendió a ocultarse bajo una capucha y a valerse de su carisma y astucia aristocrática.',
     apariencia: 'Un joven Tiefling de piel azulada y cuernos prominentes, de porte distinguido pero vestido con ropas finas ahora deshilachadas y polvorientas.',
     personalidad: 'Ideal: "El destino lo forjo yo." Vínculo: Vengar la traición de su familia y dominar la caótica chispa de su interior.',
+    conectado: true
+  },
+  {
+    nombre: 'Morgan Nurthe',
+    clase: 'Caballero',
+    subclase: 'Berserker',
+    raza: 'Humano',
+    trasfondo: 'Guardia de la corona',
+    alineamiento: 'Caótico Neutral',
+    nivel: 3,
+    color_acento: '#a62626',
+    hp: 30,
+    hp_max: 30,
+    ca: 16,
+    ca_especial: null,
+    velocidad: 30,
+    iniciativa: 3,
+    bonificador_competencia: 2,
+    bonificador_ataque: 4,
+    bonificador_magia: 0,
+    dado_especial: null,
+    nombre_estado_especial: 'FRENESÍ BERSERKER',
+    estadisticas: {
+      fuerza: 15,
+      destreza: 17,
+      constitucion: 15,
+      inteligencia: 20,
+      sabiduria: 15,
+      carisma: 10
+    },
+    habilidades: {
+      "Atletismo": { "bonus": 4, "experto": false },
+      "Percepción": { "bonus": 4, "experto": false },
+      "Historia": { "bonus": 7, "experto": false },
+      "Intimidación": { "bonus": 2, "experto": false }
+    },
+    salvaciones: {
+      "Fuerza": 4,
+      "Constitución": 4
+    },
+    condiciones_activas: [],
+    retrato_forzado: null,
+    estado_especial: false,
+    retratos: {
+      base: '/morgan_base.png'
+    },
+    ventajas: [
+      'Recuerdos Muertos: Daño recibido reducido y daño asestado aumentado ante No Muertos.',
+      '+15% de probabilidad de golpes críticos ante No Muertos.',
+      'Siente una ligera simpatía hacia los seres de estatura baja.',
+      'Adora el ejercicio físico.'
+    ],
+    desventajas: [
+      'Aversión Mágica: Recibe mayor daño mágico y efectos mágicos aliados menos eficaces.',
+      'Detesta a los magos.',
+      'Pocas palabras, se incomoda frente a la expresividad.'
+    ],
+    rasgos: [
+      {
+        id: 'rasgo-morgan-1',
+        nombre: 'Recuerdos Muertos (Pasiva)',
+        descripcion: 'Recibe daño reducido de unidades no muertas y asesta daño aumentado a unidades no muertas. Tiene 15% más de probabilidad de asestar golpes críticos a unidades no muertas.'
+      },
+      {
+        id: 'rasgo-morgan-2',
+        nombre: 'Aversión Mágica (Pasiva)',
+        descripcion: 'Recibe mayor daño de ataques de naturaleza mágica y los efectos aliados de esta naturaleza son menos eficaces en él.'
+      }
+    ],
+    acciones: [
+      {
+        id: 'morgan-atk-1',
+        nombre: 'Espadazo Pesado',
+        descripcion: 'Ataque cuerpo a cuerpo con mandoble real.',
+        tipo: 'ataque',
+        icono: 'Sword',
+        tirada_impactar: '+4',
+        alcance: '5 pies',
+        danio: '2d6+2',
+        tipo_danio: 'cortante',
+        estado: 'ambos'
+      },
+      {
+        id: 'morgan-habilidad-1',
+        nombre: 'Historia Antigua',
+        descripcion: 'Acción. Obtiene aumento de defensa (+2 a la CA) mientras menos vida posea (se activa por debajo de 40% HP).',
+        tipo: 'habilidad',
+        icono: 'ShieldAlert',
+        estado: 'ambos'
+      },
+      {
+        id: 'morgan-habilidad-2',
+        nombre: 'Insidioso',
+        descripcion: 'Acción. Obtiene una mayor probabilidad de asestar un golpe crítico en su próximo ataque.',
+        tipo: 'habilidad',
+        icono: 'Target',
+        estado: 'ambos'
+      },
+      {
+        id: 'morgan-habilidad-3',
+        nombre: 'Sentido de Existencia',
+        descripcion: 'Reacción. Si cae en combate (0 HP), volverá a la batalla pero con todas sus estadísticas reducidas al 50% de su capacidad total.',
+        tipo: 'reaccion',
+        icono: 'HeartPulse',
+        estado: 'ambos'
+      },
+      {
+        id: 'morgan-habilidad-4',
+        nombre: 'Estandarte de Guerra',
+        descripcion: 'Acción. Aumenta su Constitución en +4 temporalmente. Sólo funciona durante batallas.',
+        tipo: 'habilidad',
+        icono: 'Flag',
+        estado: 'ambos'
+      }
+    ],
+    equipo: [
+      'Mandoble de Guardia Real desgastado',
+      'Armadura de placas roja oscura (desgastada y con daño de batalla)',
+      'Anillo Sello de la Guardia Real'
+    ],
+    idiomas: ['Común', 'Alto Asteriano (Élfico)'],
+    historia: 'En los albores del sagrado imperio germánico existió un caballero al cual solo lo conocían como Nurthe. Primero al mando de la seguridad del rey, su identidad era un secreto de Estado. Dedicó su vida a proteger el reino, liderando batallas contra las fuerzas no muertas que emergieron del inframundo. El reino sobrevivió, pero al costo de la vida de Morgan Nurthe. Su historia fue borrada para no eclipsar al rey. Ahora, regresado misteriosamente a la vida, busca respuestas.',
+    apariencia: 'Un hombre alto embutido en una armadura rojo oscuro sumamente desgastada, por cuya visera dañada se le observa una parte expuesta del cráneo.',
+    personalidad: 'Ideal: Descubrir por qué regresó a la vida. Defecto: Pocas palabras, se incomoda frente a la expresividad y detesta profundamente a los magos.',
     conectado: true
   }
 ];
@@ -535,7 +660,7 @@ async function insertarPersonajes() {
 
   // Limpiar registros antiguos para evitar duplicados
   console.log('🧹 Limpiando personajes anteriores de la base de datos...');
-  await fetch(`${SUPABASE_URL}/rest/v1/personajes?nombre=in.%28%22La%20Masa%22%2C%22Iluso%20%28Lirio%29%22%2C%22Valerius%20Vallis%20%28%22Ceniza%22%20%2F%20%22Bar%C3%B3n%22%29%22%29`, {
+  await fetch(`${SUPABASE_URL}/rest/v1/personajes?nombre=in.%28%22La%20Masa%22%2C%22Iluso%20%28Lirio%29%22%2C%22Valerius%20Vallis%20%28%22Ceniza%22%20%2F%20%22Bar%C3%B3n%22%29%22%2C%22Morgan%20Nurthe%22%29`, {
     method: 'DELETE',
     headers: {
       'apikey':        ANON_KEY,
